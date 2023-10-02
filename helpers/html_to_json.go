@@ -15,10 +15,14 @@ import (
     "strings"
 )
 
+type Definition struct {
+    PartOfSpeech    string `json:"part_of_speech"`
+    WordDefinition  string  `json:"definition"`
+}
 type DictEntity struct {
-    Word            string  `json:"word"`
-    PartOfSpeech    string  `json:"part_of_speech"`
-    Definition      string  `json:"definition"`
+    Word            string          `json:"word"`
+    Spellings       []string        `json:"alternate_spellings,omitempty"`
+    WordDefinitions []Definition    `json:"definitions"`
 }
 
 func parseHTML(file_path string, ch chan<- string) {
@@ -38,19 +42,35 @@ func parseHTML(file_path string, ch chan<- string) {
         `(?m)<P><B>(?P<word>\w+)</B>\s+\(<I>(?P<pos>.*)</I>\)\s+(?P<def>.+)</P>$`)
 
     template := []byte("$word|$pos|$def")
-    dict_entities := []DictEntity{}
+    dict_entities := map[string]DictEntity{}
     for _, submatches := range pattern.FindAllSubmatchIndex(read_bytes, -1) {
         b := []byte{}
         b = pattern.Expand(b, template, read_bytes, submatches)
         splitted_bytes := bytes.Split(b, []byte("|"))
-        
-        dict_entities = append(
-                            dict_entities,
-                            DictEntity{
-                                Word: string(splitted_bytes[0]),
-                                PartOfSpeech: string(splitted_bytes[1]),
-                                Definition: string(splitted_bytes[2]),
-                            })
+
+        word := strings.ToLower(string(splitted_bytes[0]))
+        pos := string(splitted_bytes[1])
+        def := string(splitted_bytes[2])
+        if entity, ok := dict_entities[word]; ok {
+            entity.WordDefinitions = append(
+                entity.WordDefinitions,
+                Definition{
+                    PartOfSpeech: pos,
+                    WordDefinition: def,
+                },
+            )
+            dict_entities[word] = entity
+        } else {
+            dict_entities[word] = DictEntity{
+                Word: word,
+                WordDefinitions: []Definition{
+                    Definition{
+                        PartOfSpeech: pos,
+                        WordDefinition: def,
+                    },
+                },
+            }
+        }
     }
     encoding, err := json.MarshalIndent(dict_entities, "", "    ")
     if err != nil {
