@@ -43,7 +43,7 @@ func FetchDbase() (err error) {
 }
 
 func downloadAndSave(ch chan<- string, savePath, url string) {
-    const timeout = 30 * time.Second
+    const timeout = 10 * time.Second
     deadline := time.Now().Add(timeout)
     for tries := 0; time.Now().Before(deadline); tries++ {
         response, err := http.Get(url)
