@@ -3,6 +3,8 @@
 package tui
 
 import (
+    "fmt"
+
     "github.com/rivo/tview"
 )
 
@@ -21,4 +23,14 @@ func initializeButtons() {
         SetLabel("Quit [::b][CTRL+C[]").
         SetBackgroundColorActivated(buttonFocusColor).
         SetSelectedFunc(func(){app.Stop()})
+
+    updateButton = tview.NewButton("").
+        SetLabel("Update Dbase[::b][CTRL+U[]").
+        SetBackgroundColorActivated(buttonFocusColor).
+        SetSelectedFunc(func(){
+            err := FetchDbase()
+            if err != nil {
+                updateWidget.SetText(fmt.Sprintf("%s", err))
+            }
+        })
 }
