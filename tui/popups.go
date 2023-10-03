@@ -32,4 +32,22 @@ func initializePopups() {
             pages.HidePage("about page")
             app.SetFocus(searchInputField)
         })
+
+    updateWidget = tview.NewTextView().
+        SetDoneFunc(func(key tcell.Key){
+            pages.HidePage("update page")
+            app.SetFocus(searchInputField)
+        }).
+        SetDynamicColors(true)
+    updateWidget.SetChangedFunc(func(){app.Draw()})
+    updateWidget.SetBorder(true)
+    updateWidget.SetBackgroundColor(borderColor)
+    updateWidget.SetDisabled(true)
+
+    updatePopup = tview.NewGrid().
+        SetBorders(false).
+        SetColumns(0, popupWidth, 0).
+        SetRows(0, popupHeight, 0).
+        AddItem(updateWidget, 1, 1, 1, 1, 0, 0, true)
+
 }
