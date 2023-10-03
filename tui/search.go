@@ -1,24 +1,12 @@
 // Everything related to searching and displaying words definition
 
-package search
+package tui
 
 import (
     "log"
     "strings"
     "text/template"
-
-    "github.com/rivo/tview"
 )
-
-type Definition struct {
-    PartOfSpeech    string `json:"part_of_speech"`
-    WordDefinition  string  `json:"definition"`
-}
-type DictEntity struct {
-    Word            string          `json:"word"`
-    Spellings       []string        `json:"alternate_spellings,omitempty"`
-    WordDefinitions []Definition    `json:"definitions"`
-}
 
 const defTempl = `
 [::b]{{.Word}}
@@ -39,11 +27,7 @@ func init() {
 }
 
 
-func SearchWord(
-    word string,
-    wordDbase map[string]DictEntity,
-    definitionBox *tview.TextView) {
-
+func searchWord(word string, wordDbase map[string]DictEntity) {
     entity := wordDbase[strings.ToLower(word)]
     writer := new(strings.Builder)
 

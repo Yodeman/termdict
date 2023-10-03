@@ -1,21 +1,13 @@
 // Everything related to listing search suggestions
 
-package search
+package tui
 
 import (
     "slices"
     "strings"
-
-    "github.com/rivo/tview"
 )
 
-func ListSuggestions(
-    maxMatch int,
-    word string,
-    words []string,
-    searchListField *tview.List,
-) {
-
+func listSuggestions(maxMatch int, word string, words []string) {
     searchListField.Clear()
     wordsLen := len(words)
     wIdx, _ := slices.BinarySearch(words, word)
