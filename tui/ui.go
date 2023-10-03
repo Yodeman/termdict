@@ -7,7 +7,9 @@ import (
     "github.com/gdamore/tcell/v2"
 )
 
+// configurations
 const (
+    maxMatchWords           = 50
     searchGridWidth         = 60
     commandsWidth           = 13
     popupWidth              = 80
@@ -16,6 +18,33 @@ const (
     inputFieldColor         = tcell.ColorWhite
     buttonFocusColor        = tcell.ColorYellow
 )
+
+var (
+    app                     *tview.Application
+    pages                   *tview.Pages
+    definitionBox           *tview.TextView
+    searchGrid              *tview.Grid
+    searchInputField        *tview.InputField
+    searchListField         *tview.List
+    commandsGrid            *tview.Grid
+    helpPopup               *tview.Grid
+    aboutPopup              *tview.Modal
+    helpButton              *tview.Button
+    aboutButton             *tview.Button
+    quitButton              *tview.Button
+
+)
+
+type Definition struct {
+    PartOfSpeech    string `json:"part_of_speech"`
+    WordDefinition  string  `json:"definition"`
+}
+type DictEntity struct {
+    Word            string          `json:"word"`
+    Spellings       []string        `json:"alternate_spellings,omitempty"`
+    WordDefinitions []Definition    `json:"definitions"`
+}
+
 
 const helpMessage = `
 Welcome to Terminal Dictionary Help!
@@ -42,10 +71,10 @@ Built with [::bu:https://github.com/rivo/tview]tview
 [::u:https://github.com/Yodeman/term-dict] https://github.com/Yodeman/term-dict
 `
 
-func RenderLayout() {
+func RenderLayout(dbase map[string]DictEntity, words []string) {
     // app
-    app := tview.NewApplication().EnableMouse(true)
-    pages := tview.NewPages()
+    app = tview.NewApplication().EnableMouse(true)
+    pages = tview.NewPages()
 
     // root widget
     rootGrid := tview.NewGrid().
@@ -54,56 +83,35 @@ func RenderLayout() {
         SetColumns(searchGridWidth, -1)
 
     // definition widget
-    definitionBox := defComponent()
+    initializeDefinitionWidget()
+    definitionBox.SetChangedFunc(func(){
+        app.Draw()
+    })
 
     // search widgets
-    searchGrid, searchInputField, searchListField := searchComponents()
+    initializeSearchWidgets()
+    searchInputField.SetDoneFunc(func(key tcell.Key){
+        switch key {
+            case tcell.KeyEnter:
+                searchWord(searchInputField.GetText(), dbase)
+        }
+    })
+    searchInputField.SetChangedFunc(func(text string){
+        listSuggestions(maxMatchWords, text, words)
+    })
+    
+    searchListField.SetChangedFunc(func(idx int, mainText, s string, r rune){
+        searchWord(mainText, dbase)
+    })
 
     // commands
-    commandsGrid := tview.NewGrid().
+    commandsGrid = tview.NewGrid().
         SetBorders(false).
         SetColumns(commandsWidth, commandsWidth, commandsWidth, -1)
     commandsGrid.SetBackgroundColor(borderColor)
 
-    helpPopup := tview.NewTextView().
-        SetDoneFunc(func(key tcell.Key){
-            pages.HidePage("help page")
-            app.SetFocus(searchInputField)
-        }).
-        SetText(helpMessage).
-        SetDynamicColors(true)
-    helpPopup.SetBorder(true)
-    helpPopup.SetBackgroundColor(borderColor)
-    helpPopup.SetDisabled(true)
-
-    helpModal := tview.NewGrid().
-        SetBorders(false).
-        SetColumns(0, popupWidth, 0).
-        SetRows(0, popupHeight, 0).
-        AddItem(helpPopup, 1, 1, 1, 1, 0, 0, true)
-
-    aboutPopup := tview.NewModal().
-        AddButtons([]string{"close"}).
-        SetText(aboutMessage).
-        SetDoneFunc(func(buttonIdx int, buttonLbl string){
-            pages.HidePage("about page")
-            app.SetFocus(searchInputField)
-        })
-
-    helpButton := tview.NewButton("").
-        SetLabel("Help [::b][F1[]").
-        SetBackgroundColorActivated(buttonFocusColor).
-        SetSelectedFunc(func(){pages.ShowPage("help page")})
-
-    aboutButton := tview.NewButton("").
-        SetLabel("About [::b][F2[]").
-        SetBackgroundColorActivated(buttonFocusColor).
-        SetSelectedFunc(func(){pages.ShowPage("about page")})
-
-    quitButton := tview.NewButton("").
-        SetLabel("Quit [::b][CTRL+C[]").
-        SetBackgroundColorActivated(buttonFocusColor).
-        SetSelectedFunc(func(){app.Stop()})
+    initializePopups()
+    initializeButtons()
 
     commandsGrid.AddItem(helpButton, 0, 0, 1, 1, 0, 0, false)
     commandsGrid.AddItem(aboutButton, 0, 1, 1, 1, 0, 0, false)
@@ -115,11 +123,15 @@ func RenderLayout() {
     rootGrid.AddItem(commandsGrid, 1, 0, 1, 2, 0, 0, false)
 
     pages.AddPage("root widget", rootGrid, true, true)
-    pages.AddPage("help page", helpModal, true, false)
+    pages.AddPage("help page", helpPopup, true, false)
     pages.AddPage("about page", aboutPopup, true, false)
 
     // moving between widgets
-    selections := []*tview.Box{searchInputField.Box, searchListField.Box, definitionBox.Box}
+    selections := []*tview.Box{
+                    searchInputField.Box,
+                    searchListField.Box,
+                    definitionBox.Box,
+                }
     for i, box := range selections {
         (func(idx int) {
             box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
