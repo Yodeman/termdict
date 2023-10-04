@@ -3,6 +3,11 @@
 package tui
 
 import (
+    "fmt"
+    "log"
+    "os"
+    "strings"
+
     "github.com/rivo/tview"
     "github.com/gdamore/tcell/v2"
 )
@@ -29,9 +34,12 @@ var (
     commandsGrid            *tview.Grid
     helpPopup               *tview.Grid
     aboutPopup              *tview.Modal
+    updatePopup             *tview.Grid
     helpButton              *tview.Button
     aboutButton             *tview.Button
     quitButton              *tview.Button
+    updateButton            *tview.Button
+    updateWidget            *tview.TextView
 
 )
 
@@ -44,7 +52,6 @@ type DictEntity struct {
     Spellings       []string        `json:"alternate_spellings,omitempty"`
     WordDefinitions []Definition    `json:"definitions"`
 }
-
 
 const helpMessage = `
 Welcome to Terminal Dictionary Help!
@@ -70,6 +77,25 @@ Built with [::bu:https://github.com/rivo/tview]tview
 
 [::u:https://github.com/Yodeman/term-dict] https://github.com/Yodeman/term-dict
 `
+const updateDoneMsg = `
+Done updating database.
+
+Please restart to load newly updated database.
+`
+
+var DbaseDir string
+var err error
+func init() {
+    DbaseDir, err = os.UserHomeDir()
+    if err != nil {
+        log.Fatalf("Error accessing home directory.\n%v\n", err)
+    }
+
+    DbaseDir = strings.Join(
+        []string{DbaseDir, ".termdict", "dbase", "json"},
+        string(os.PathSeparator))
+    DbaseDir += string(os.PathSeparator)
+}
 
 func RenderLayout(dbase map[string]DictEntity, words []string) {
     // app
@@ -107,7 +133,8 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
     // commands
     commandsGrid = tview.NewGrid().
         SetBorders(false).
-        SetColumns(commandsWidth, commandsWidth, commandsWidth, -1)
+        SetColumns(
+            commandsWidth, commandsWidth, commandsWidth+10, commandsWidth, -1)
     commandsGrid.SetBackgroundColor(borderColor)
 
     initializePopups()
@@ -115,7 +142,8 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
 
     commandsGrid.AddItem(helpButton, 0, 0, 1, 1, 0, 0, false)
     commandsGrid.AddItem(aboutButton, 0, 1, 1, 1, 0, 0, false)
-    commandsGrid.AddItem(quitButton, 0, 2, 1, 1, 0, 0, false)
+    commandsGrid.AddItem(updateButton, 0, 2, 1, 1, 0, 0, false)
+    commandsGrid.AddItem(quitButton, 0, 3, 1, 1, 0, 0, false)
 
 
     rootGrid.AddItem(searchGrid, 0, 0, 1, 1, 0, 0, false)
@@ -125,6 +153,7 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
     pages.AddPage("root widget", rootGrid, true, true)
     pages.AddPage("help page", helpPopup, true, false)
     pages.AddPage("about page", aboutPopup, true, false)
+    pages.AddPage("update page", updatePopup, true, false)
 
     // moving between widgets
     selections := []*tview.Box{
@@ -154,6 +183,16 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
                 pages.ShowPage("help page")
             case tcell.KeyF2:
                 pages.ShowPage("about page")
+            case tcell.KeyCtrlU:
+                pages.ShowPage("update page")
+                go func () {
+                    err = FetchDbase()
+                    if err != nil {
+                        updateWidget.SetText(fmt.Sprintf("%s", err))
+                    } else {
+                        updateWidget.SetText(updateDoneMsg)
+                    }
+                } ()
         }
         return event
     })
