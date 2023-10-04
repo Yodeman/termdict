@@ -57,6 +57,7 @@ func setup() (map[string]tui.DictEntity, []string) {
         }
 
         // Download words database
+        fmt.Println("Downloading words database...")
         err = tui.FetchDbase()
         if err != nil {
             log.Fatalf("%v", err)
