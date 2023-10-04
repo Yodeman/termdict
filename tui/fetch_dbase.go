@@ -11,7 +11,7 @@ import (
     "strings"
 )
 
-var remoteFiles = [26]string{
+var remoteFiles = []string{
    "wb1913_a.json", "wb1913_b.json", "wb1913_c.json", "wb1913_d.json",
    "wb1913_e.json", "wb1913_f.json", "wb1913_g.json", "wb1913_h.json",
    "wb1913_i.json", "wb1913_j.json", "wb1913_k.json", "wb1913_l.json",
@@ -20,7 +20,34 @@ var remoteFiles = [26]string{
    "wb1913_u.json", "wb1913_v.json", "wb1913_w.json", "wb1913_x.json",
    "wb1913_y.json", "wb1913_z.json"}
 
-const remoteURL = "https://raw.githubusercontent.com/yodeman/termdict/main/word_dbase/json/"
+const (
+    remoteURL = "https://raw.githubusercontent.com/yodeman/termdict/main/word_dbase/json/"
+    // file to track database that has changed, to determine the files to be
+    // downloaded.
+    dbaseTracker = "https://raw.githubusercontent.com/yodeman/termdict/main/word_dbase/changes_tracker.json"
+)
+
+func UpdateDbase() (err error) {
+    response, err := http.Get(dbaseTracker)
+    if err != nil {
+        return err
+    }
+    defer response.Body.Close()
+
+    if response.StatusCode == http.StatusOK {
+        res := map[string][]string{}
+        err := json.NewDecoder(response.Body).Decode(&res)
+        if err != nil {
+            return fmt.Errorf("Failed to fetch database changes.")
+        }
+        remoteFiles = res["changes"]
+        if len(remoteFiles) == 0 {
+            return fmt.Errorf("Local database is up to date.\nPress escape to exit.")
+        }
+        err = FetchDbase()
+    }
+    return err
+}
 
 func FetchDbase() (err error) {
     ch := make(chan string)
