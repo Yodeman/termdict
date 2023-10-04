@@ -47,17 +47,20 @@ func downloadAndSave(ch chan<- string, savePath, url string) {
     deadline := time.Now().Add(timeout)
     for tries := 0; time.Now().Before(deadline); tries++ {
         response, err := http.Get(url)
+        if err != nil {
+            continue // retry
+        }
         defer response.Body.Close()
 
-        if (err == nil) && (response.StatusCode == http.StatusOK) {
+        if response.StatusCode == http.StatusOK {
             result := map[string]DictEntity{}
             err := json.NewDecoder(response.Body).Decode(&result)
             if err != nil {
-                continue
+                continue // retry
             }
             encoding, err := json.MarshalIndent(result, "", "    ")
             if err != nil {
-                continue
+                continue // retry
             }
             openedFile, err := os.OpenFile(savePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
             if err != nil {
@@ -71,8 +74,8 @@ func downloadAndSave(ch chan<- string, savePath, url string) {
                 ch<- fmt.Sprintf(
                     "Error writing to %s, while getting %s.\n\n",
                     savePath, url)
-                return
             }
+            return
         }
     }
     ch<- fmt.Sprintf("Error getting %s after %s.\n\n", url, timeout)
