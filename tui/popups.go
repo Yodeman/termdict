@@ -38,8 +38,9 @@ func initializePopups() {
             pages.HidePage("update page")
             app.SetFocus(searchInputField)
         }).
+        SetText("Updating database...").
+        SetChangedFunc(func(){app.Draw()}).
         SetDynamicColors(true)
-    updateWidget.SetChangedFunc(func(){app.Draw()})
     updateWidget.SetBorder(true)
     updateWidget.SetBackgroundColor(borderColor)
     updateWidget.SetDisabled(true)
