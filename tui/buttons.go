@@ -25,12 +25,17 @@ func initializeButtons() {
         SetSelectedFunc(func(){app.Stop()})
 
     updateButton = tview.NewButton("").
-        SetLabel("Update Dbase[::b][CTRL+U[]").
+        SetLabel("Update Dbase [::b][CTRL+U[]").
         SetBackgroundColorActivated(buttonFocusColor).
         SetSelectedFunc(func(){
-            err := FetchDbase()
-            if err != nil {
-                updateWidget.SetText(fmt.Sprintf("%s", err))
-            }
+            pages.ShowPage("update page")
+            go func () {
+                err := FetchDbase()
+                if err != nil {
+                    updateWidget.SetText(fmt.Sprintf("%s", err))
+                } else {
+                    updateWidget.SetText(updateDoneMsg)
+                }
+            } ()
         })
 }
