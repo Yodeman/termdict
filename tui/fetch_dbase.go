@@ -35,9 +35,7 @@ func FetchDbase() (err error) {
 
     if writer.Len() != 0 {
         err = fmt.Errorf("%s", writer.String())
-    } else {
-        err = nil
-    }
+    } 
 
     return err
 }
@@ -75,6 +73,7 @@ func downloadAndSave(ch chan<- string, savePath, url string) {
                     "Error writing to %s, while getting %s.\n\n",
                     savePath, url)
             }
+            ch<- fmt.Sprint()
             return
         }
     }
