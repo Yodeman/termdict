@@ -7,3 +7,4 @@
 </p>
 
 </div>
+![term-dict](https://github.com/Yodeman/termdict/assets/59335237/1551f666-be33-45a0-9248-39553930eec2)
