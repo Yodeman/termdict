@@ -8,4 +8,5 @@
 
 </div>
 
-![ScreeShot](https://github.com/Yodeman/termdict/assets/59335237/1551f666-be33-45a0-9248-39553930eec2)
+
+![ScreenShot](https://github.com/Yodeman/termdict/assets/59335237/01b8da72-58ce-48de-8dea-45cf169dee74)
