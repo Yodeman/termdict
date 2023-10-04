@@ -9,6 +9,7 @@ import (
     "os"
     "slices"
     "strings"
+    "time"
 
     "github.com/yodeman/termdict/tui"
 )
@@ -62,6 +63,7 @@ func setup() (map[string]tui.DictEntity, []string) {
         if err != nil {
             log.Fatalf("%v", err)
         }
+        time.Sleep(5) // wait for downloaded files to be written
     }
 
     jsonFiles, err = fs.Glob(os.DirFS(tui.DbaseDir), "wb1913_*.json")
