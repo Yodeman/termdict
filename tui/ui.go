@@ -186,7 +186,7 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
             case tcell.KeyCtrlU:
                 pages.ShowPage("update page")
                 go func () {
-                    err = FetchDbase()
+                    err = UpdateDbase()
                     if err != nil {
                         updateWidget.SetText(fmt.Sprintf("%s", err))
                     } else {
