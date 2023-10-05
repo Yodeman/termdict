@@ -28,25 +28,63 @@ const (
 )
 
 func UpdateDbase() (err error) {
-    response, err := http.Get(dbaseTracker)
+    remoteFiles, err = checkChanges()
     if err != nil {
         return err
+    } else if len(remoteFiles) == 0 {
+        return fmt.Errorf(`
+        Local database is up to date.
+
+                        [yellow::b]press escape to exit.
+        `)
+    }
+
+    err = FetchDbase()
+
+    return err
+}
+
+// checks the remote repository for changes in the dictionary
+// database. It collects the names of files with changes, if
+// there is any.
+func checkChanges() (changes []string, err error) {
+    changesDir := strings.TrimSuffix(DbaseDir, "json"+string(os.PathSeparator))
+    cf, err := os.Open(changesDir+"changes_tracker.json")
+    if err != nil {
+        return changes, fmt.Errorf("Error obtaining changes.\n%v\n", err)
+    }
+    localChanges := map[string]string{}
+    err = json.NewDecoder(cf).Decode(&localChanges)
+    cf.Close()
+    if err != nil {
+        return changes, fmt.Errorf("Error obtaining changes.\n%v\n", err)
+    }
+
+    response, err := http.Get(dbaseTracker)
+    if err != nil {
+        return changes, fmt.Errorf("Error obtaining changes.\n%v\n", err)
     }
     defer response.Body.Close()
 
     if response.StatusCode == http.StatusOK {
-        res := map[string][]string{}
-        err := json.NewDecoder(response.Body).Decode(&res)
+        remoteChanges := map[string]string{}
+        err = json.NewDecoder(response.Body).Decode(&remoteChanges)
         if err != nil {
-            return fmt.Errorf("Failed to fetch database changes.")
+            return changes, fmt.Errorf("Error obtaining changes.\n%v\n", err)
         }
-        remoteFiles = res["changes"]
-        if len(remoteFiles) == 0 {
-            return fmt.Errorf("Local database is up to date.\nPress escape to exit.")
+
+        for dbase, ver := range remoteChanges {
+            if lVer, ok := localChanges[dbase]; !ok || (ver != lVer) {
+                changes = append(changes, dbase)
+            }
         }
-        err = FetchDbase()
+
+        return changes, nil
     }
-    return err
+
+    err = fmt.Errorf("Error obtaining changes.\n%v\n", response.StatusCode)
+
+    return changes, err
 }
 
 func FetchDbase() (err error) {
@@ -60,9 +98,40 @@ func FetchDbase() (err error) {
         writer.WriteString(<-ch)
     }
 
+    // update local changes tracker
+    response, err := http.Get(dbaseTracker)
+    if err != nil {
+        writer.WriteString(fmt.Sprintf("Error obtaining changes.\n%v\n", err))
+        return fmt.Errorf("%s", writer.String())
+    }
+    defer response.Body.Close()
+    localChanges := map[string]string{}
+    err = json.NewDecoder(response.Body).Decode(&localChanges)
+    changesDir := strings.TrimSuffix(DbaseDir, "json"+string(os.PathSeparator))
+    cf, err := os.OpenFile(
+        changesDir+"changes_tracker.json",
+        os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
+        0666,
+    )
+    if err != nil {
+        writer.WriteString(fmt.Sprintf("Error updating local changes.\n%v\n", err))
+        return fmt.Errorf("%s", writer.String())
+    }
+    defer cf.Close()
+    encoding, err := json.MarshalIndent(localChanges, "", "    ")
+    if err != nil {
+        writer.WriteString(fmt.Sprintf("Error updating local changes.\n%v\n", err))
+        return fmt.Errorf("%s", writer.String())
+    }
+    _, err = cf.WriteString(fmt.Sprintf("%s", encoding))
+    if err != nil {
+        writer.WriteString(fmt.Sprintf("Error updating local changes.\n%v\n", err))
+        return fmt.Errorf("%s", writer.String())
+    }
+
     if writer.Len() != 0 {
         err = fmt.Errorf("%s", writer.String())
-    } 
+    }
 
     return err
 }
@@ -94,6 +163,7 @@ func downloadAndSave(ch chan<- string, savePath, url string) {
                     savePath, url)
                 return
             }
+            defer openedFile.Close()
             _, err = openedFile.WriteString(fmt.Sprintf("%s", encoding))
             if err != nil {
                 ch<- fmt.Sprintf(
