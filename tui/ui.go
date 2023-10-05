@@ -54,6 +54,8 @@ type DictEntity struct {
 }
 
 const helpMessage = `
+                [yellow:blue:b]press escape to exit!
+[-:-:-]
 Welcome to Terminal Dictionary Help!
 
 Terminal Dictionary was built with [::bu:https://github.com/rivo/tview]tview
@@ -63,12 +65,29 @@ Terminal Dictionary was built with [::bu:https://github.com/rivo/tview]tview
 [::B]Key		            Command
 -----------------------------------------------
 ctrl+c			Quit the application
+ctrl+u          Update dictionary words database
 F1              This help
 F2			    Details about Terminal Dictionary
+tab | shf+tab   Move between widgets (search, suggestions, definition)
+
+
+[::b]           Dictionary Symbols
+
+[::B]Symbol                 Meaning
+-----------------------------------------------
+n.              Noun
+v.              Verb
+v. t.           Transitive verb
+v. i.           Intransitive verb
+a.              Adjective
+adv.            Adverb
+prep.           Preposition
+pron.           Pronoun
+pl.             Plural
 
 
 
-[yellow:blue:b]press escape to exit!
+                [yellow:blue:b]press escape to exit!
 `
 const aboutMessage = `
 term-dict v0.1.0
