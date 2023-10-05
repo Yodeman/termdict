@@ -14,7 +14,7 @@
 ## Installation
 TermDict is reasonable stable for personal use, and is being used while being developed.
 
-[Available for download in releases](https:github.com/yodeman/termdict/releases)
+[Available for download in releases](https://github.com/yodeman/termdict/releases)
 
 ## Build
 
