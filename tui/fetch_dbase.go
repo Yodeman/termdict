@@ -1,4 +1,4 @@
-// Utility to fetch words database
+// Utility to fetch and update words database.
 
 package tui
 
@@ -11,6 +11,7 @@ import (
     "strings"
 )
 
+// Dictionary databse remote file names.
 var remoteFiles = []string{
    "wb1913_a.json", "wb1913_b.json", "wb1913_c.json", "wb1913_d.json",
    "wb1913_e.json", "wb1913_f.json", "wb1913_g.json", "wb1913_h.json",
@@ -22,11 +23,14 @@ var remoteFiles = []string{
 
 const (
     remoteURL = "https://raw.githubusercontent.com/yodeman/termdict/main/word_dbase/json/"
-    // file to track database that has changed, to determine the files to be
+    // File to track database that has changed, in order to determine the files to be
     // downloaded.
     dbaseTracker = "https://raw.githubusercontent.com/yodeman/termdict/main/word_dbase/changes_tracker.json"
 )
 
+// UpdateDbase attempts to try and update user's local dictionary database,
+// by first checking for database files that have changed on the remote repository
+// and then download those files if any.
 func UpdateDbase() (err error) {
     remoteFiles, err = checkChanges()
     if err != nil {
@@ -44,9 +48,8 @@ func UpdateDbase() (err error) {
     return err
 }
 
-// checks the remote repository for changes in the dictionary
-// database. It collects the names of files with changes, if
-// there is any.
+// checkChanges checks the remote repository for changes in the dictionary
+// database. It collects the names of files with changes, if there are any.
 func checkChanges() (changes []string, err error) {
     changesDir := strings.TrimSuffix(DbaseDir, "json"+string(os.PathSeparator))
     cf, err := os.Open(changesDir+"changes_tracker.json")
@@ -87,6 +90,9 @@ func checkChanges() (changes []string, err error) {
     return changes, err
 }
 
+// FetchDbase downloads dictionary database files contained in the **remoteFiles**
+// variable. The user's local database files changes tracker is updated to ensure
+// that no download is made on database files without any changes.
 func FetchDbase() (err error) {
     ch := make(chan string)
     writer := new(strings.Builder)
@@ -98,7 +104,7 @@ func FetchDbase() (err error) {
         writer.WriteString(<-ch)
     }
 
-    // update local changes tracker
+    // update local changes tracker file.
     response, err := http.Get(dbaseTracker)
     if err != nil {
         writer.WriteString(fmt.Sprintf("Error obtaining changes.\n%v\n", err))
@@ -136,6 +142,8 @@ func FetchDbase() (err error) {
     return err
 }
 
+// downloadAndSave downloads file in the given url and saves it in the file
+// names on the savePath argument.
 func downloadAndSave(ch chan<- string, savePath, url string) {
     const timeout = 10 * time.Second
     deadline := time.Now().Add(timeout)
@@ -156,7 +164,8 @@ func downloadAndSave(ch chan<- string, savePath, url string) {
             if err != nil {
                 continue // retry
             }
-            openedFile, err := os.OpenFile(savePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+            openedFile, err := os.OpenFile(
+                savePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
             if err != nil {
                 ch<- fmt.Sprintf(
                     "Error opening %s for writing, while getting %s.\n\n",

@@ -8,6 +8,8 @@ import (
     "github.com/rivo/tview"
 )
 
+// initializeSearchWidgets initializes tui widgets for search and
+// suggestions.
 func initializeSearchWidgets() {
     searchGrid = tview.NewGrid().
         SetBorders(false).

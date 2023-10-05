@@ -13,25 +13,27 @@ import (
     "github.com/yodeman/termdict/tui"
 )
 
+// message shown when dictionary database files are missing in the
+// expected application directory.
 const dbaseCheckMsg = `
 Words database not found in the expected directory.
 
 Would you like to download the words database [Y|y]es or [N|n]o: `
 
+// Total numbers of the expected dictionary database files.
 const dbaseLen = 26
 
 
+// Program entry point.
 func main() {
     dbase, words := setup()
 
     tui.RenderLayout(dbase, words)
 }
 
-/****
-    setup checks if the words database exists on the user's system.
-    It attempts to download the words database if there is internet
-    connection.
-****/
+// setup checks if the words database exists on the user's system.
+// It attempts to download the words database based on the input
+// received from the user, provided there is internet connection.
 func setup() (map[string]tui.DictEntity, []string) {
     _, err := os.Stat(tui.DbaseDir)
     if os.IsNotExist(err) {
@@ -76,6 +78,7 @@ func setup() (map[string]tui.DictEntity, []string) {
     return dbase, words
 }
 
+// loadWords loads the dictionary words database
 func loadWords(
     rootPath string,
     wordsDbase []string,

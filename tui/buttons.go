@@ -8,6 +8,7 @@ import (
     "github.com/rivo/tview"
 )
 
+// initializeButtons initializes the tui commands buttons
 func initializeButtons() {
     helpButton = tview.NewButton("").
         SetLabel("Help [::b][F1[]").

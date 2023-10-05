@@ -7,6 +7,8 @@ import (
     "github.com/rivo/tview"
 )
 
+// initializePopups initializes popup widgets used to display
+// messages.
 func initializePopups() {
     helpWidget := tview.NewTextView().
         SetDoneFunc(func(key tcell.Key){

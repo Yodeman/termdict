@@ -14,11 +14,11 @@ import (
 
 // configurations
 const (
-    maxMatchWords           = 50
-    searchGridWidth         = 60
-    commandsWidth           = 13
-    popupWidth              = 80
-    popupHeight             = 25
+    maxMatchWords           = 50    // maximum numbers of search suggestions
+    searchGridWidth         = 60    // search and suggestions widget width
+    commandsWidth           = 13    // width for each command options
+    popupWidth              = 80    // message box width
+    popupHeight             = 25    // message box height
     borderColor             = tcell.ColorBlue
     inputFieldColor         = tcell.ColorWhite
     buttonFocusColor        = tcell.ColorYellow
@@ -26,33 +26,42 @@ const (
 
 var (
     app                     *tview.Application
-    pages                   *tview.Pages
+    pages                   *tview.Pages    // root widget
+
+    // tui widgets
     definitionBox           *tview.TextView
     searchGrid              *tview.Grid
     searchInputField        *tview.InputField
     searchListField         *tview.List
     commandsGrid            *tview.Grid
+
+    // popups
     helpPopup               *tview.Grid
     aboutPopup              *tview.Modal
     updatePopup             *tview.Grid
+    updateWidget            *tview.TextView
+
+    // buttons
     helpButton              *tview.Button
     aboutButton             *tview.Button
     quitButton              *tview.Button
     updateButton            *tview.Button
-    updateWidget            *tview.TextView
-
 )
 
-type Definition struct {
-    PartOfSpeech    string `json:"part_of_speech"`
-    WordDefinition  string  `json:"definition"`
-}
+// DictEntity represents the structure of elements/entities
+// in the dictionary database.
 type DictEntity struct {
     Word            string          `json:"word"`
     Spellings       []string        `json:"alternate_spellings,omitempty"`
     WordDefinitions []Definition    `json:"definitions"`
 }
 
+type Definition struct {
+    PartOfSpeech    string `json:"part_of_speech"`
+    WordDefinition  string  `json:"definition"`
+}
+
+// message shown upon pressing/clicking help command
 const helpMessage = `
                 [yellow:blue:b]press escape to exit!
 [-:-:-]
@@ -89,6 +98,8 @@ pl.             Plural
 
                 [yellow:blue:b]press escape to exit!
 `
+
+// message shown upon pressing/clicking about command
 const aboutMessage = `
 term-dict v0.1.0
 
@@ -96,13 +107,15 @@ Built with [::bu:https://github.com/rivo/tview]tview
 
 [::u:https://github.com/Yodeman/term-dict] https://github.com/Yodeman/term-dict
 `
+
+// message shown upon pressing/clicking database update command
 const updateDoneMsg = `
 Done updating database.
 
 Please restart to load newly updated database.
 `
 
-var DbaseDir string
+var DbaseDir string     // dictionary database directory.
 var err error
 func init() {
     DbaseDir, err = os.UserHomeDir()
@@ -116,6 +129,7 @@ func init() {
     DbaseDir += string(os.PathSeparator)
 }
 
+// RenderLayout renders dictionary terminal user interface layout.
 func RenderLayout(dbase map[string]DictEntity, words []string) {
     // app
     app = tview.NewApplication().EnableMouse(true)
@@ -174,7 +188,7 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
     pages.AddPage("about page", aboutPopup, true, false)
     pages.AddPage("update page", updatePopup, true, false)
 
-    // moving between widgets
+    // Allow the usage to tab and shift+tab key to move between widgets.
     selections := []*tview.Box{
                     searchInputField.Box,
                     searchListField.Box,
@@ -188,7 +202,8 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
                         app.SetFocus(selections[(idx+1)%len(selections)])
                         return nil
                     case tcell.KeyBacktab:
-                        app.SetFocus(selections[(idx+len(selections)-1)%len(selections)])
+                        app.SetFocus(
+                            selections[(idx+len(selections)-1)%len(selections)])
                         return nil
                 }
                 return event
@@ -196,6 +211,7 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
         })(i)
     }
 
+    // Configure key press on tui.
     app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
         switch event.Key() {
             case tcell.KeyF1:

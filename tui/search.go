@@ -8,6 +8,7 @@ import (
     "text/template"
 )
 
+// Text template used to display word definition
 const defTempl = `
 [::b]{{.Word}}
 
@@ -27,6 +28,8 @@ func init() {
 }
 
 
+// searchWord searches for word in the dictionary database
+// and renders the definition of the word.
 func searchWord(word string, wordDbase map[string]DictEntity) {
     entity := wordDbase[strings.ToLower(word)]
     writer := new(strings.Builder)

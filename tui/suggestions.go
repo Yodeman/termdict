@@ -7,6 +7,10 @@ import (
     "strings"
 )
 
+// listSuggestions receives text input from the search input field,
+// searches for matching words in the list of words present in the
+// dictionary database and then list the matching words in the
+// search suggestion box.
 func listSuggestions(maxMatch int, word string, words []string) {
     searchListField.Clear()
     wordsLen := len(words)
