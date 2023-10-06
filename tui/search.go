@@ -30,8 +30,8 @@ func init() {
 
 // searchWord searches for word in the dictionary database
 // and renders the definition of the word.
-func searchWord(word string, wordDbase map[string]DictEntity) {
-    entity := wordDbase[strings.ToLower(word)]
+func searchWord(word string) {
+    entity := DictDbase[strings.ToLower(word)]
     writer := new(strings.Builder)
 
     if err := definition.Execute(writer, entity); err != nil {

@@ -115,8 +115,13 @@ Done updating database.
 Please restart to load newly updated database.
 `
 
-var DbaseDir string     // dictionary database directory.
-var err error
+var (
+    DbaseDir        string                  // dictionary database directory.
+    DictDbase       map[string]DictEntity   // dictionary database.
+    DictWords       []string                // sorted list of dictionary words
+    err             error
+)
+
 func init() {
     DbaseDir, err = os.UserHomeDir()
     if err != nil {
@@ -130,7 +135,7 @@ func init() {
 }
 
 // RenderLayout renders dictionary terminal user interface layout.
-func RenderLayout(dbase map[string]DictEntity, words []string) {
+func RenderLayout() {
     // app
     app = tview.NewApplication().EnableMouse(true)
     pages = tview.NewPages()
@@ -152,15 +157,15 @@ func RenderLayout(dbase map[string]DictEntity, words []string) {
     searchInputField.SetDoneFunc(func(key tcell.Key){
         switch key {
             case tcell.KeyEnter:
-                searchWord(searchInputField.GetText(), dbase)
+                searchWord(searchInputField.GetText())
         }
     })
     searchInputField.SetChangedFunc(func(text string){
-        listSuggestions(maxMatchWords, text, words)
+        listSuggestions(text)
     })
     
     searchListField.SetChangedFunc(func(idx int, mainText, s string, r rune){
-        searchWord(mainText, dbase)
+        searchWord(mainText)
     })
 
     // commands

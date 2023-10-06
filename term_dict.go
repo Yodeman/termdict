@@ -26,9 +26,9 @@ const dbaseLen = 26
 
 // Program entry point.
 func main() {
-    dbase, words := setup()
+    tui.DictDbase, tui.DictWords = setup()
 
-    tui.RenderLayout(dbase, words)
+    tui.RenderLayout()
 }
 
 // setup checks if the words database exists on the user's system.
