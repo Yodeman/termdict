@@ -67,7 +67,7 @@ const helpMessage = `
 [-:-:-]
 Welcome to Terminal Dictionary Help!
 
-Terminal Dictionary was built with [::bu:https://github.com/rivo/tview]tview
+Terminal Dictionary was built with [::bu:https://github.com/rivo/tview]tview[:::-]
 
 [::Ub]			General Keys
 
@@ -103,9 +103,9 @@ pl.             Plural
 const aboutMessage = `
 term-dict v0.1.0
 
-Built with [::bu:https://github.com/rivo/tview]tview
+Built with [::bu:https://github.com/rivo/tview]tview[:::-]
 
-[::u:https://github.com/Yodeman/term-dict] https://github.com/Yodeman/term-dict
+[::u:https://github.com/Yodeman/term-dict] https://github.com/Yodeman/term-dict[:::-]
 `
 
 // message shown upon pressing/clicking database update command
