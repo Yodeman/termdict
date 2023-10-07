@@ -16,6 +16,19 @@ TermDict is reasonable stable for personal use, and is being used while being de
 
 [Available for download in releases](https://github.com/yodeman/termdict/releases)
 
+#### Suggestions for better file organization and usage
+In your home directory:
+
+    - Linux and Mac -> `echo $HOME`
+    - Windows -> `echo %USERPROFILE%`
+create a directory with name `.termdict`, and within that, a child directory `bin`. Then place
+the downloaded binary file into the `bin` directory.
+
+You can then add the `bin` directory path to the `$PATH` environmental variable. Allowing you to
+run the application from any terminal session.
+
+[Here is a simple guide on how to append to $PATH](https://gist.github.com/nex3/c395b2f8fd4b02068be37c961301caa7)
+
 ## Build
 
 - Mininum supported `go` version: `1.21.0`
@@ -25,3 +38,4 @@ TermDict is reasonable stable for personal use, and is being used while being de
 The following projects have been (and are still) crucial to the developement of this projec:
 
 - [tview](https://github.com/rivo/tview)
+- [TOPTED](https://www.mso.anu.edu.au/~ralph/OPTED/)
