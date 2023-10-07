@@ -16,3 +16,22 @@ Please note that this document is work in progress so I might add to it in the f
 ## Pull Requests
 
 If you have a feature request, open an issue first before sending a pull request, and allow for some discussion.
+
+## More on contributing to dictionary words database
+
+Each file in the [words database](https://github.com/Yodeman/termdict/tree/main/word_dbase/json) is named after the english alphabet, each containing words starting with that particular alphabet.
+
+When contributing to the database, locate the appropriate file and the appropriate position (words are sorted in lexicogrphical order) to place the new word. The format for each word is shown below:
+
+```json
+"new word in lower case" : {
+    "word" : "new word in lower case",
+    "alternate_spellings": [list of alternative spellings],
+    "definitions": [
+        {
+            "part_of_speech": "",
+            "defintion": ""
+        },
+    ]
+}
+```
