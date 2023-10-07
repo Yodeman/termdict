@@ -20,7 +20,7 @@ TermDict is reasonable stable for personal use, and is being used while being de
 In your home directory:
 
     - Linux and Mac -> `echo $HOME`
-    - Windows -> `echo %USERPROFILE%`
+    - Windows -> `usually C:\Users\your_username\`
 create a directory with name `.termdict`, and within that, a child directory `bin`. Then place
 the downloaded binary file into the `bin` directory.
 
