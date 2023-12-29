@@ -3,62 +3,62 @@
 package tui
 
 import (
-    "fmt"
-    "log"
-    "os"
-    "strings"
+	"fmt"
+	"log"
+	"os"
+	"strings"
 
-    "github.com/rivo/tview"
-    "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 // configurations
 const (
-    maxMatchWords           = 50    // maximum numbers of search suggestions
-    searchGridWidth         = 60    // search and suggestions widget width
-    commandsWidth           = 13    // width for each command options
-    popupWidth              = 80    // message box width
-    popupHeight             = 25    // message box height
-    borderColor             = tcell.ColorBlue
-    inputFieldColor         = tcell.ColorWhite
-    buttonFocusColor        = tcell.ColorYellow
+	maxMatchWords    = 50 // maximum numbers of search suggestions
+	searchGridWidth  = 60 // search and suggestions widget width
+	commandsWidth    = 13 // width for each command options
+	popupWidth       = 80 // message box width
+	popupHeight      = 25 // message box height
+	borderColor      = tcell.ColorBlue
+	inputFieldColor  = tcell.ColorWhite
+	buttonFocusColor = tcell.ColorYellow
 )
 
 var (
-    app                     *tview.Application
-    pages                   *tview.Pages    // root widget
+	app   *tview.Application
+	pages *tview.Pages // root widget
 
-    // tui widgets
-    definitionBox           *tview.TextView
-    searchGrid              *tview.Grid
-    searchInputField        *tview.InputField
-    searchListField         *tview.List
-    commandsGrid            *tview.Grid
+	// tui widgets
+	definitionBox    *tview.TextView
+	searchGrid       *tview.Grid
+	searchInputField *tview.InputField
+	searchListField  *tview.List
+	commandsGrid     *tview.Grid
 
-    // popups
-    helpPopup               *tview.Grid
-    aboutPopup              *tview.Modal
-    updatePopup             *tview.Grid
-    updateWidget            *tview.TextView
+	// popups
+	helpPopup    *tview.Grid
+	aboutPopup   *tview.Modal
+	updatePopup  *tview.Grid
+	updateWidget *tview.TextView
 
-    // buttons
-    helpButton              *tview.Button
-    aboutButton             *tview.Button
-    quitButton              *tview.Button
-    updateButton            *tview.Button
+	// buttons
+	helpButton   *tview.Button
+	aboutButton  *tview.Button
+	quitButton   *tview.Button
+	updateButton *tview.Button
 )
 
 // DictEntity represents the structure of elements/entities
 // in the dictionary database.
 type DictEntity struct {
-    Word            string          `json:"word"`
-    Spellings       []string        `json:"alternate_spellings,omitempty"`
-    WordDefinitions []Definition    `json:"definitions"`
+	Word            string       `json:"word"`
+	Spellings       []string     `json:"alternate_spellings,omitempty"`
+	WordDefinitions []Definition `json:"definitions"`
 }
 
 type Definition struct {
-    PartOfSpeech    string `json:"part_of_speech"`
-    WordDefinition  string  `json:"definition"`
+	PartOfSpeech   string `json:"part_of_speech"`
+	WordDefinition string `json:"definition"`
 }
 
 // message shown upon pressing/clicking help command
@@ -73,7 +73,7 @@ Terminal Dictionary was built with [::bu:https://github.com/rivo/tview]tview[:::
 
 [::B]Key		            Command
 -----------------------------------------------
-ctrl+c			Quit the application
+ctrl+q			Quit the application
 ctrl+u          Update dictionary words database
 F1              This help
 F2			    Details about Terminal Dictionary
@@ -116,128 +116,138 @@ Please restart to load newly updated database.
 `
 
 var (
-    DbaseDir        string                  // dictionary database directory.
-    DictDbase       map[string]DictEntity   // dictionary database.
-    DictWords       []string                // sorted list of dictionary words
-    err             error
+	DbaseDir  string                // dictionary database directory.
+	DictDbase map[string]DictEntity // dictionary database.
+	DictWords []string              // sorted list of dictionary words
+	err       error
 )
 
 func init() {
-    DbaseDir, err = os.UserHomeDir()
-    if err != nil {
-        log.Fatalf("Error accessing home directory.\n%v\n", err)
-    }
+	DbaseDir, err = os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("Error accessing home directory.\n%v\n", err)
+	}
 
-    DbaseDir = strings.Join(
-        []string{DbaseDir, ".termdict", "dbase", "json"},
-        string(os.PathSeparator))
-    DbaseDir += string(os.PathSeparator)
+	switch os.PathSeparator {
+	case '/':
+		DbaseDir = strings.Join(
+			[]string{DbaseDir, ".local", "termdict", "dbase", "json"},
+			string(os.PathSeparator))
+	case '\\':
+		DbaseDir = strings.Join(
+			[]string{DbaseDir, "AppData", "Local", "termdict", "dbase", "json"},
+			string(os.PathSeparator))
+	default:
+		log.Fatalln("Detected unsupported platform!!!")
+	}
+	DbaseDir += string(os.PathSeparator)
 }
 
 // RenderLayout renders dictionary terminal user interface layout.
 func RenderLayout() {
-    // app
-    app = tview.NewApplication().EnableMouse(true)
-    pages = tview.NewPages()
+	// app
+	app = tview.NewApplication().EnableMouse(true)
+	pages = tview.NewPages()
 
-    // root widget
-    rootGrid := tview.NewGrid().
-        SetBorders(false).
-        SetRows(-1, 1).
-        SetColumns(searchGridWidth, -1)
+	// root widget
+	rootGrid := tview.NewGrid().
+		SetBorders(false).
+		SetRows(-1, 1).
+		SetColumns(searchGridWidth, -1)
 
-    // definition widget
-    initializeDefinitionWidget()
-    definitionBox.SetChangedFunc(func(){
-        app.Draw()
-    })
+	// definition widget
+	initializeDefinitionWidget()
+	definitionBox.SetChangedFunc(func() {
+		app.Draw()
+	})
 
-    // search widgets
-    initializeSearchWidgets()
-    searchInputField.SetDoneFunc(func(key tcell.Key){
-        switch key {
-            case tcell.KeyEnter:
-                searchWord(searchInputField.GetText())
-        }
-    })
-    searchInputField.SetChangedFunc(func(text string){
-        listSuggestions(text)
-    })
-    
-    searchListField.SetChangedFunc(func(idx int, mainText, s string, r rune){
-        searchWord(mainText)
-    })
+	// search widgets
+	initializeSearchWidgets()
+	searchInputField.SetDoneFunc(func(key tcell.Key) {
+		switch key {
+		case tcell.KeyEnter:
+			searchWord(searchInputField.GetText())
+		}
+	})
+	searchInputField.SetChangedFunc(func(text string) {
+		listSuggestions(text)
+	})
 
-    // commands
-    commandsGrid = tview.NewGrid().
-        SetBorders(false).
-        SetColumns(
-            commandsWidth, commandsWidth, commandsWidth+10, commandsWidth, -1)
-    commandsGrid.SetBackgroundColor(borderColor)
+	searchListField.SetChangedFunc(func(idx int, mainText, s string, r rune) {
+		searchWord(mainText)
+	})
 
-    initializePopups()
-    initializeButtons()
+	// commands
+	commandsGrid = tview.NewGrid().
+		SetBorders(false).
+		SetColumns(
+			commandsWidth, commandsWidth, commandsWidth+10, commandsWidth, -1)
+	commandsGrid.SetBackgroundColor(borderColor)
 
-    commandsGrid.AddItem(helpButton, 0, 0, 1, 1, 0, 0, false)
-    commandsGrid.AddItem(aboutButton, 0, 1, 1, 1, 0, 0, false)
-    commandsGrid.AddItem(updateButton, 0, 2, 1, 1, 0, 0, false)
-    commandsGrid.AddItem(quitButton, 0, 3, 1, 1, 0, 0, false)
+	initializePopups()
+	initializeButtons()
 
+	commandsGrid.AddItem(helpButton, 0, 0, 1, 1, 0, 0, false)
+	commandsGrid.AddItem(aboutButton, 0, 1, 1, 1, 0, 0, false)
+	commandsGrid.AddItem(updateButton, 0, 2, 1, 1, 0, 0, false)
+	commandsGrid.AddItem(quitButton, 0, 3, 1, 1, 0, 0, false)
 
-    rootGrid.AddItem(searchGrid, 0, 0, 1, 1, 0, 0, false)
-    rootGrid.AddItem(definitionBox, 0, 1, 1, 1, 0, 0, false)
-    rootGrid.AddItem(commandsGrid, 1, 0, 1, 2, 0, 0, false)
+	rootGrid.AddItem(searchGrid, 0, 0, 1, 1, 0, 0, false)
+	rootGrid.AddItem(definitionBox, 0, 1, 1, 1, 0, 0, false)
+	rootGrid.AddItem(commandsGrid, 1, 0, 1, 2, 0, 0, false)
 
-    pages.AddPage("root widget", rootGrid, true, true)
-    pages.AddPage("help page", helpPopup, true, false)
-    pages.AddPage("about page", aboutPopup, true, false)
-    pages.AddPage("update page", updatePopup, true, false)
+	pages.AddPage("root widget", rootGrid, true, true)
+	pages.AddPage("help page", helpPopup, true, false)
+	pages.AddPage("about page", aboutPopup, true, false)
+	pages.AddPage("update page", updatePopup, true, false)
 
-    // Allow the usage to tab and shift+tab key to move between widgets.
-    selections := []*tview.Box{
-                    searchInputField.Box,
-                    searchListField.Box,
-                    definitionBox.Box,
-                }
-    for i, box := range selections {
-        (func(idx int) {
-            box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-                switch event.Key() {
-                    case tcell.KeyTab:
-                        app.SetFocus(selections[(idx+1)%len(selections)])
-                        return nil
-                    case tcell.KeyBacktab:
-                        app.SetFocus(
-                            selections[(idx+len(selections)-1)%len(selections)])
-                        return nil
-                }
-                return event
-            })
-        })(i)
-    }
+	// Allow the usage to tab and shift+tab key to move between widgets.
+	selections := []*tview.Box{
+		searchInputField.Box,
+		searchListField.Box,
+		definitionBox.Box,
+	}
+	for i, box := range selections {
+		(func(idx int) {
+			box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				switch event.Key() {
+				case tcell.KeyTab:
+					app.SetFocus(selections[(idx+1)%len(selections)])
+					return nil
+				case tcell.KeyBacktab:
+					app.SetFocus(
+						selections[(idx+len(selections)-1)%len(selections)])
+					return nil
+				}
+				return event
+			})
+		})(i)
+	}
 
-    // Configure key press on tui.
-    app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-        switch event.Key() {
-            case tcell.KeyF1:
-                pages.ShowPage("help page")
-            case tcell.KeyF2:
-                pages.ShowPage("about page")
-            case tcell.KeyCtrlU:
-                pages.ShowPage("update page")
-                go func () {
-                    err = UpdateDbase()
-                    if err != nil {
-                        updateWidget.SetText(fmt.Sprintf("%s", err))
-                    } else {
-                        updateWidget.SetText(updateDoneMsg)
-                    }
-                } ()
-        }
-        return event
-    })
+	// Configure key press on tui.
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyF1:
+			pages.ShowPage("help page")
+		case tcell.KeyF2:
+			pages.ShowPage("about page")
+		case tcell.KeyCtrlQ:
+			app.Stop()
+		case tcell.KeyCtrlU:
+			pages.ShowPage("update page")
+			go func() {
+				err = UpdateDbase()
+				if err != nil {
+					updateWidget.SetText(fmt.Sprintf("%s", err))
+				} else {
+					updateWidget.SetText(updateDoneMsg)
+				}
+			}()
+		}
+		return event
+	})
 
-    if err := app.SetRoot(pages, true).SetFocus(searchInputField).Run(); err != nil {
-        panic(err)
-    }
+	if err := app.SetRoot(pages, true).SetFocus(searchInputField).Run(); err != nil {
+		panic(err)
+	}
 }
