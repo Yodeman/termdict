@@ -17,12 +17,12 @@ TermDict is reasonable stable for personal use, and is being used while being de
 [Available for download in releases](https://github.com/yodeman/termdict/releases)
 
 #### Suggestions for better file organization and usage
-In your home directory:
+TermDict uses the following path to store app data:
 
-    - Linux and Mac -> `echo $HOME`
-    - Windows -> `usually C:\Users\your_username\`
-create a directory with name `.termdict`, and within that, a child directory `bin`. Then place
-the downloaded binary file into the `bin` directory.
+    - Linux and Mac -> `$HOME/.local/termdict`
+    - Windows -> `%userprofile%\AppData\Local\termdict`
+
+The executable can be placed in a child directory `bin` in the recommended app directory. 
 
 You can then add the `bin` directory path to the `$PATH` environmental variable. Allowing you to
 run the application from any terminal session.
