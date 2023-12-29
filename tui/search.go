@@ -3,9 +3,9 @@
 package tui
 
 import (
-    "log"
-    "strings"
-    "text/template"
+	"log"
+	"strings"
+	"text/template"
 )
 
 // Text template used to display word definition
@@ -19,24 +19,24 @@ Definitions:
 
 {{end}}
 `
+
 var definition *template.Template
 
 func init() {
-    definition = template.Must(
-        template.New("definition").
-        Parse(defTempl))
+	definition = template.Must(
+		template.New("definition").
+			Parse(defTempl))
 }
-
 
 // searchWord searches for word in the dictionary database
 // and renders the definition of the word.
 func searchWord(word string) {
-    entity := DictDbase[strings.ToLower(word)]
-    writer := new(strings.Builder)
+	entity := DictDbase[strings.ToLower(word)]
+	writer := new(strings.Builder)
 
-    if err := definition.Execute(writer, entity); err != nil {
-        log.Fatalf("%v", err)
-    }
+	if err := definition.Execute(writer, entity); err != nil {
+		log.Fatalf("%v", err)
+	}
 
-    definitionBox.SetText(writer.String())
+	definitionBox.SetText(writer.String())
 }
