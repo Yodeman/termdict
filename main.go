@@ -9,7 +9,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/yodeman/termdict/internal/config"
 	"github.com/yodeman/termdict/internal/data"
@@ -25,8 +24,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error resolving application directories.\n%v\n", err)
 	}
-	if err := os.MkdirAll(cfg.DbaseDir, 0o755); err != nil {
-		log.Fatalf("Error creating directory %s.\n%v\n", cfg.DbaseDir, err)
+	if err := config.Prepare(cfg); err != nil {
+		log.Fatalf("Error preparing application directory %s.\n%v\n", cfg.DataDir, err)
 	}
 
 	svc, err := dict.NewMulti(
