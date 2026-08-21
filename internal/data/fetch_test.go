@@ -319,7 +319,7 @@ func TestResolveChannel(t *testing.T) {
 	}
 
 	tagged := ResolveChannel("v0.2.0")
-	want := "https://github.com/yodeman/termdict/releases/download/v0.2.0/termdict-data/"
+	want := "https://github.com/yodeman/termdict/releases/download/v0.2.0/"
 	if tagged.BaseURL != want {
 		t.Errorf("tagged BaseURL = %q, want %q", tagged.BaseURL, want)
 	}

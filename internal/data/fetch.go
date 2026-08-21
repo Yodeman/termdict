@@ -73,8 +73,11 @@ func ResolveChannel(version string) Channel {
 			ChecksumsURL: DefaultChecksumsURL,
 		}
 	}
-	base := releaseAssetBase + version + "/termdict-data/"
+	base := releaseAssetBase + version + "/"
 	return Channel{
+		// GitHub release assets are flat files; the release carries the
+		// 26 letter JSONs, changes_tracker.json and checksums.txt as
+		// individual assets (see .goreleaser.yaml release.extra_files).
 		BaseURL:      base,
 		TrackerURL:   base + "changes_tracker.json",
 		ChecksumsURL: base + "checksums.txt",

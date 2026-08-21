@@ -27,6 +27,10 @@ const AppName = "termdict"
 // Unset builds report "dev".
 var AppVersion = "dev"
 
+// Commit is overridden at build time (see Makefile / .goreleaser.yaml)
+// and shown by --version when available.
+var Commit = ""
+
 // MarkerName flags that the one-time legacy migration already ran.
 const MarkerName = ".migrated-v2"
 

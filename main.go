@@ -34,7 +34,7 @@ func run(args []string, stdout, stderr *os.File) int {
 		_, _ = fmt.Fprint(stdout, cli.Usage())
 		return cli.ExitOK
 	case cli.ActionVersion:
-		_, _ = fmt.Fprint(stdout, cli.VersionLine(config.AppVersion))
+		_, _ = fmt.Fprint(stdout, cli.VersionLine(config.AppVersion, config.Commit))
 		return cli.ExitOK
 	}
 

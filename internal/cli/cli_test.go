@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -214,10 +216,13 @@ func TestUsageAndVersionLine(t *testing.T) {
 		}
 	}
 
-	if v := VersionLine(""); v != "termdict dev\n" {
+	if v := VersionLine("", ""); !strings.HasPrefix(v, "termdict dev (go") {
 		t.Errorf("VersionLine(\"\") = %q", v)
 	}
-	if v := VersionLine("v0.2.0"); v != "termdict v0.2.0\n" {
-		t.Errorf("VersionLine(v0.2.0) = %q", v)
+	if v := VersionLine("v0.2.0", "abc1234"); v != fmt.Sprintf("termdict v0.2.0 (commit abc1234) (%s)\n", runtime.Version()) {
+		t.Errorf("VersionLine(v0.2.0, abc1234) = %q", v)
+	}
+	if v := VersionLine("dev", ""); strings.Contains(v, "commit") {
+		t.Errorf("empty commit must be omitted: %q", v)
 	}
 }

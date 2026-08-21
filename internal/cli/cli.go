@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 
 	"github.com/yodeman/termdict/internal/data"
@@ -168,12 +169,17 @@ Data directory layout:
 `
 }
 
-// VersionLine renders the --version output.
-func VersionLine(version string) string {
+// VersionLine renders the --version output. An empty commit is
+// omitted; the Go runtime version is always included.
+func VersionLine(version, commit string) string {
 	if version == "" || version == "dev" {
 		version = "dev"
 	}
-	return fmt.Sprintf("termdict %s\n", version)
+	line := fmt.Sprintf("termdict %s", version)
+	if commit != "" {
+		line += fmt.Sprintf(" (commit %s)", commit)
+	}
+	return line + fmt.Sprintf(" (%s)\n", runtime.Version())
 }
 
 // LookupService is the subset of *dict.Service the CLI needs.

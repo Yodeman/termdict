@@ -1,15 +1,28 @@
 NAME		:= termdict
 OUTPUT_BIN	?= bin/${NAME}
 
-.PHONY: run build clean test vet fmt lint tidy
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null)
+LDFLAGS := -s -w \
+	-X github.com/yodeman/termdict/internal/config.AppVersion=$(VERSION) \
+	-X github.com/yodeman/termdict/internal/config.Commit=$(COMMIT)
+
+# Source-build install destination (make install).
+PREFIX ?= $(shell go env GOPATH)/bin
+
+.PHONY: run build clean test vet fmt lint tidy install
 
 run:
 	go run .
 
 build:
-	@echo "building termdict..."
-	go build -o ${OUTPUT_BIN} -ldflags="-w -s"
+	@echo "building termdict $(VERSION)..."
+	go build -ldflags "$(LDFLAGS)" -o ${OUTPUT_BIN} .
 	@echo "output generated to" ${OUTPUT_BIN}
+
+install:
+	go build -ldflags "$(LDFLAGS)" -o ${PREFIX}/${NAME} .
+	@echo "installed to ${PREFIX}/${NAME}"
 
 clean:
 	rm -f ${OUTPUT_BIN}
