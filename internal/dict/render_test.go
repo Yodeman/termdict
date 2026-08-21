@@ -51,3 +51,50 @@ func TestNotFoundMessage(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderPlainText(t *testing.T) {
+	entity := Entity{
+		Word:      "test",
+		Spellings: []string{"teste", "testes"},
+		WordDefinitions: []Definition{
+			{PartOfSpeech: "n.", WordDefinition: "A trial."},
+			{PartOfSpeech: "", WordDefinition: "An unlabeled sense."},
+			{PartOfSpeech: "v. t.", WordDefinition: "To try."},
+		},
+	}
+
+	var b strings.Builder
+	if err := RenderPlainText(&b, entity); err != nil {
+		t.Fatalf("RenderPlainText: %v", err)
+	}
+
+	want := "test\n" +
+		"\n  part of speech: n.\n  └A trial.\n" +
+		"\n  └An unlabeled sense.\n" +
+		"\n  part of speech: v. t.\n  └To try.\n" +
+		"\nalternate spellings: teste, testes\n"
+	if b.String() != want {
+		t.Errorf("RenderPlainText mismatch:\ngot:\n%q\nwant:\n%q", b.String(), want)
+	}
+}
+
+func TestRenderPlainTextNoSpellings(t *testing.T) {
+	var b strings.Builder
+	if err := RenderPlainText(&b, Entity{
+		Word:            "solo",
+		WordDefinitions: []Definition{{PartOfSpeech: "a.", WordDefinition: "Alone."}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "alternate spellings") {
+		t.Error("spellings block must be omitted when empty")
+	}
+}
+
+func TestPlainTextNotFound(t *testing.T) {
+	msg := PlainTextNotFound("zzz")
+	if !strings.Contains(msg, `No results for "zzz"`) ||
+		!strings.Contains(msg, "termdict download") {
+		t.Errorf("unexpected message: %q", msg)
+	}
+}

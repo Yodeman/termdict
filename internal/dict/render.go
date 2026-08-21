@@ -3,6 +3,7 @@ package dict
 import (
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 )
 
@@ -40,4 +41,48 @@ This word isn't in the offline library.
 Press ctrl+u and choose "Download Full Dictionary" to get
 the complete word list (internet connection required).
 `, query)
+}
+
+// RenderPlainText writes entity to w in the plain-text format used by
+// the CLI: definition payload only, no color markup, safe to pipe.
+//
+//	word
+//
+//	  part of speech: n.
+//	  └definition…
+//
+//	alternate spellings: x, y      (only when present)
+func RenderPlainText(w io.Writer, entity Entity) error {
+	if _, err := fmt.Fprintf(w, "%s\n", entity.Word); err != nil {
+		return err
+	}
+	for _, def := range entity.WordDefinitions {
+		pos := strings.TrimSpace(def.PartOfSpeech)
+		if pos != "" {
+			if _, err := fmt.Fprintf(w, "\n  part of speech: %s\n", pos); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "  └%s\n",
+				strings.TrimRight(def.WordDefinition, "\n")); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, err := fmt.Fprintf(w, "\n  └%s\n",
+			strings.TrimRight(def.WordDefinition, "\n")); err != nil {
+			return err
+		}
+	}
+	if len(entity.Spellings) > 0 {
+		_, err := fmt.Fprintf(w, "\nalternate spellings: %s\n",
+			strings.Join(entity.Spellings, ", "))
+		return err
+	}
+	return nil
+}
+
+// PlainTextNotFound returns the single-line not-found notice printed to
+// stderr by the CLI (stdout stays empty so pipes stay clean).
+func PlainTextNotFound(query string) string {
+	return fmt.Sprintf("No results for %q. Run 'termdict download' to get the full dictionary.\n", query)
 }
