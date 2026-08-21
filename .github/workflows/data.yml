@@ -1,0 +1,45 @@
+# Data-integrity guards for the words database.
+#
+# Runs on every change to the data or its build tooling, and weekly to
+# catch silent corruption. Fatal checks: JSON validity, tracker shape,
+# checksums.txt accuracy, embedded-core/manifest agreement. The
+# dbasebuild determinism guard proves the committed core subset is
+# exactly what the current generator + frequency list produce.
+name: Data integrity
+
+on:
+  schedule:
+    - cron: "17 4 * * 1" # weekly, Monday 04:17 UTC
+  pull_request:
+    paths:
+      - "word_dbase/**"
+      - "cmd/dbasebuild/**"
+      - "cmd/dbasecheck/**"
+      - "internal/data/embedded/**"
+  push:
+    branches: [main]
+    paths:
+      - "word_dbase/**"
+      - "cmd/dbasebuild/**"
+      - "cmd/dbasecheck/**"
+      - "internal/data/embedded/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Database invariants (dbasecheck)
+        run: go run ./cmd/dbasecheck
+
+      - name: Embedded core matches regenerated output (determinism guard)
+        run: |
+          go run ./cmd/dbasebuild --out /tmp/core-check --checksums-out ""
+          diff -r /tmp/core-check internal/data/embedded/core

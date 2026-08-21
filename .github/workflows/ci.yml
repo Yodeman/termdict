@@ -1,0 +1,63 @@
+# Pull-request / push quality gates.
+#
+# The lint job (golangci-lint) also enforces gofmt via the gofmt
+# formatter enabled in .golangci.yml, so a separate fmt check is not
+# needed. Go versions track the two currently-supported releases.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ["1.26.x", "1.27.x"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test (race detector)
+        run: go test -race ./...
+
+  lint:
+    # Single linux job: golangci-lint results are OS-independent for
+    # this codebase and the action is slow enough that a 6x matrix
+    # would triple CI time for no signal.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  e2e:
+    # CLI end-to-end contract (exit codes, piping) on the fastest runner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: CLI end-to-end checks
+        run: sh scripts/cli_e2e.sh

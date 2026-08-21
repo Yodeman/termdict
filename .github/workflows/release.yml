@@ -1,0 +1,36 @@
+# Tag-triggered release builds via GoReleaser.
+#
+# Produces (see .goreleaser.yaml):
+#   - 6 binaries: linux/darwin/windows x amd64/arm64, archived
+#   - termdict_checksums.txt over the archives
+#   - full-database assets: wb1913_*.json + changes_tracker.json +
+#     checksums.txt (consumed by the app's pinned update channel)
+#
+# Releases are created as DRAFTS; a maintainer reviews and publishes.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history for commit metadata
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

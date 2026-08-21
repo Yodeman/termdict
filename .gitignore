@@ -4,3 +4,6 @@ brainstorming/
 
 word_dbase/html
 kitty.sess
+
+# GoReleaser output
+dist/
