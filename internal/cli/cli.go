@@ -185,6 +185,7 @@ func VersionLine(version, commit string) string {
 // LookupService is the subset of *dict.Service the CLI needs.
 type LookupService interface {
 	Lookup(word string) (dict.Entity, bool)
+	Fuzzy(query string, maxSuggestions int) []string
 }
 
 // Updater is the subset of *data.Client the CLI needs.
@@ -208,6 +209,10 @@ func (r *Runner) RunLookup(svc LookupService, query string) int {
 	entity, found := svc.Lookup(query)
 	if !found {
 		_, _ = fmt.Fprint(r.Stderr, dict.PlainTextNotFound(query))
+		if suggestions := svc.Fuzzy(query, dict.MaxFuzzySuggestions); len(suggestions) > 0 {
+			_, _ = fmt.Fprintf(r.Stderr, "Did you mean: %s?\n",
+				strings.Join(suggestions, ", "))
+		}
 		return ExitNotFound
 	}
 	if err := dict.RenderPlainText(r.Stdout, entity); err != nil {

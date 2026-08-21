@@ -69,11 +69,21 @@ func TestParseArgs(t *testing.T) {
 	}
 }
 
-type fakeService map[string]dict.Entity
+type fakeService struct {
+	entries map[string]dict.Entity
+	fuzzy   map[string][]string
+}
 
 func (s fakeService) Lookup(word string) (dict.Entity, bool) {
-	e, ok := s[strings.ToLower(strings.TrimSpace(word))]
+	e, ok := s.entries[strings.ToLower(strings.TrimSpace(word))]
 	return e, ok
+}
+
+func (s fakeService) Fuzzy(query string, _ int) []string {
+	if s.fuzzy == nil {
+		return nil
+	}
+	return s.fuzzy[query]
 }
 
 type fakeUpdater struct {
@@ -102,9 +112,9 @@ func newRunner() (*Runner, *bytes.Buffer, *bytes.Buffer) {
 }
 
 func TestRunLookupHit(t *testing.T) {
-	svc := fakeService{"time": {Word: "time", WordDefinitions: []dict.Definition{
+	svc := fakeService{entries: map[string]dict.Entity{"time": {Word: "time", WordDefinitions: []dict.Definition{
 		{PartOfSpeech: "n.", WordDefinition: "A duration."},
-	}}}
+	}}}}
 	runner, out, errOut := newRunner()
 
 	code := runner.RunLookup(svc, "Time") // case-insensitive
@@ -125,7 +135,7 @@ func TestRunLookupHit(t *testing.T) {
 }
 
 func TestRunLookupMissStreamDiscipline(t *testing.T) {
-	svc := fakeService{"time": {Word: "time"}}
+	svc := fakeService{entries: map[string]dict.Entity{"time": {Word: "time"}}}
 	runner, out, errOut := newRunner()
 
 	code := runner.RunLookup(svc, "zzzzqqq")
@@ -144,7 +154,7 @@ func TestRunLookupMissStreamDiscipline(t *testing.T) {
 
 func TestRunLookupEmptyDefinitionEntity(t *testing.T) {
 	runner, out, _ := newRunner()
-	code := runner.RunLookup(fakeService{"void": {Word: "void"}}, "void")
+	code := runner.RunLookup(fakeService{entries: map[string]dict.Entity{"void": {Word: "void"}}}, "void")
 	if code != ExitOK {
 		t.Fatalf("exit = %d", code)
 	}
@@ -224,5 +234,26 @@ func TestUsageAndVersionLine(t *testing.T) {
 	}
 	if v := VersionLine("dev", ""); strings.Contains(v, "commit") {
 		t.Errorf("empty commit must be omitted: %q", v)
+	}
+}
+
+func TestRunLookupSuggestsAlternatives(t *testing.T) {
+	svc := fakeService{
+		entries: map[string]dict.Entity{"receive": {Word: "receive"}},
+		fuzzy:   map[string][]string{"receve": {"receive", "recieve"}}, //nolint:misspell // deliberate misspelling
+	}
+	runner, out, errOut := newRunner()
+
+	code := runner.RunLookup(svc, "receve")
+
+	if code != ExitNotFound {
+		t.Fatalf("exit = %d, want %d", code, ExitNotFound)
+	}
+	if out.Len() != 0 {
+		t.Errorf("stdout must stay empty, got %q", out.String())
+	}
+	if !strings.Contains(errOut.String(), "Did you mean:") ||
+		!strings.Contains(errOut.String(), "receive") {
+		t.Errorf("stderr missing did-you-mean hint: %q", errOut.String())
 	}
 }

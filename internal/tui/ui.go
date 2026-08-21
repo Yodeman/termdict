@@ -95,6 +95,15 @@ Local database is up to date.
 [yellow::b]press escape to exit!
 `
 
+// message shown after the user cancels a run with Escape
+const cancelledMsg = `
+[yellow::b]Cancelled.[-:-:-]
+
+Nothing was broken; partially downloaded files resume on the next run.
+
+[yellow::b]press escape to exit!
+`
+
 // aboutMessage returns the about-popup content for the given version.
 func aboutMessage(version string) string {
 	return fmt.Sprintf(`
@@ -135,6 +144,7 @@ type UI struct {
 	updating     atomic.Bool
 	updateCtx    context.Context
 	cancelUpdate context.CancelFunc
+	cancelAction context.CancelFunc
 }
 
 // New creates a UI for cfg using svc for lookups and updater for
@@ -156,6 +166,21 @@ func (u *UI) Run() error {
 		SetBorders(false).
 		SetRows(-1, 1).
 		SetColumns(searchGridWidth, -1)
+
+	// Shrink the fixed-width search column on narrow terminals so the
+	// definition pane stays readable down to ~60 columns.
+	u.app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
+		width, _ := screen.Size()
+		columns := searchGridWidth
+		if width > 0 && width < searchGridWidth+24 {
+			columns = width * 3 / 5
+			if columns < 14 {
+				columns = 14
+			}
+		}
+		rootGrid.SetColumns(columns, -1)
+		return false
+	})
 
 	u.initializeDefinitionWidget()
 	u.initializeSearchWidgets()
@@ -267,6 +292,10 @@ func (u *UI) searchWord(word string) {
 	switch {
 	case !found:
 		fmt.Fprintf(writer, "%s", dict.NotFoundMessage(strings.TrimSpace(word)))
+		if suggestions := u.svc.Fuzzy(word, dict.MaxFuzzySuggestions); len(suggestions) > 0 {
+			fmt.Fprintf(writer, "\n[yellow::b]Did you mean:[yellow::-] %s\n",
+				strings.Join(suggestions, ", "))
+		}
 	default:
 		if err := dict.RenderTUI(writer, entity); err != nil {
 			log.Printf("rendering definition of %q: %v", word, err)
@@ -289,13 +318,26 @@ func (u *UI) listSuggestions(text string) {
 // startUpdate launches a single background database update and shows
 // its progress in the update popup. Concurrent invocations are ignored.
 func (u *UI) startUpdate() {
-	u.runUpdateAction("Updating database...", u.updater.Update)
+	u.runUpdateAction("Updating database", u.updater.Update)
 }
 
 // startDownloadFull launches a full-dictionary download in the
 // background. Concurrent invocations are ignored.
 func (u *UI) startDownloadFull() {
-	u.runUpdateAction("Downloading full dictionary...", u.updater.DownloadFull)
+	u.runUpdateAction("Downloading full dictionary", u.updater.DownloadFull)
+}
+
+// progressText renders the popup body during a download: title,
+// counts, a bar and the current file.
+func progressText(title string, done, total int, current string) string {
+	const barWidth = 24
+	filled := 0
+	if total > 0 {
+		filled = done * barWidth / total
+	}
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
+	return fmt.Sprintf("%s… (%d/%d)\n[%s]\n%s\n\n[dim::b]press Esc to cancel[-::-]",
+		title, done, total, bar, current)
 }
 
 // runUpdateAction guards against concurrent runs, shows the update
@@ -307,14 +349,15 @@ func (u *UI) runUpdateAction(runningText string, action func(context.Context, da
 	}
 
 	ctx, cancel := context.WithCancel(u.updateCtx)
+	u.cancelAction = cancel
 	go func() {
 		defer cancel()
 
 		updated, err := action(ctx, func(done, total int, current string) {
 			u.app.QueueUpdateDraw(func() {
 				if u.updating.Load() {
-					u.updateWidget.SetText(fmt.Sprintf(
-						"%s (%d/%d)\n%s", runningText, done, total, current))
+					u.updateWidget.SetText(
+						progressText(runningText, done, total, current))
 				}
 			})
 		})
@@ -322,6 +365,8 @@ func (u *UI) runUpdateAction(runningText string, action func(context.Context, da
 		u.app.QueueUpdateDraw(func() {
 			defer func() { u.updating.Store(false) }()
 			switch {
+			case errors.Is(err, context.Canceled):
+				u.updateWidget.SetText(cancelledMsg)
 			case err == nil && updated == 0:
 				u.updateWidget.SetText(upToDateMsg)
 			case err == nil:

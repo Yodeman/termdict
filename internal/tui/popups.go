@@ -18,6 +18,7 @@ func (u *UI) initializePopups() {
 		SetText(helpMessage).
 		SetDynamicColors(true)
 	helpWidget.SetBorder(true)
+	helpWidget.SetTitle("[::bi]Help — [Esc[] close")
 	helpWidget.SetBackgroundColor(borderColor)
 
 	u.helpPopup = tview.NewGrid().
@@ -43,6 +44,7 @@ func (u *UI) initializePopups() {
 		SetChangedFunc(func() { u.app.Draw() }).
 		SetDynamicColors(true)
 	u.updateWidget.SetBorder(true)
+	u.updateWidget.SetTitle("[::bi]Database — [Esc[] close / cancel")
 	u.updateWidget.SetBackgroundColor(borderColor)
 
 	// Action row shown under the update log: incremental update and
@@ -70,6 +72,10 @@ func (u *UI) initializePopups() {
 		AddItem(buttonsGrid, 1, 0, 1, 1, 0, 0, true)
 	updateStack.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
+			if u.updating.Load() && u.cancelAction != nil {
+				u.cancelAction() // first Esc cancels; result pane explains
+				return nil
+			}
 			u.pages.HidePage("update page")
 			u.app.SetFocus(u.searchInputField)
 			return nil
