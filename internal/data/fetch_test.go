@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +37,15 @@ func newTestServer(t *testing.T, dir string, mutate func(routes map[string]http.
 			_, _ = fmt.Fprint(w, `{"banana":{"word":"banana","definitions":[{"part_of_speech":"n.","definition":"A berry."}]}}`)
 		},
 	}
+	// Serve plausible content for every remaining letter so full-set
+	// downloads succeed.
+	for r := 'c'; r <= 'z'; r++ {
+		name := fmt.Sprintf("/wb1913_%c.json", r)
+		letter := string(r)
+		routes[name] = func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, `{"%s":{"word":"%s"}}`, letter, letter)
+		}
+	}
 	if mutate != nil {
 		mutate(routes)
 	}
@@ -47,13 +58,14 @@ func newTestServer(t *testing.T, dir string, mutate func(routes map[string]http.
 	t.Cleanup(server.Close)
 
 	return &Client{
-		BaseURL:     server.URL + "/",
-		TrackerURL:  server.URL + "/changes_tracker.json",
-		Dir:         dir,
-		TrackerPath: filepath.Join(dir, "changes_tracker.json"),
-		Workers:     2,
-		Retries:     2,
-		backoff:     func(int) time.Duration { return time.Millisecond },
+		BaseURL:      server.URL + "/",
+		TrackerURL:   server.URL + "/changes_tracker.json",
+		ChecksumsURL: server.URL + "/checksums.txt",
+		Dir:          dir,
+		TrackerPath:  filepath.Join(dir, "changes_tracker.json"),
+		Workers:      2,
+		Retries:      2,
+		backoff:      func(int) time.Duration { return time.Millisecond },
 	}
 }
 
@@ -295,4 +307,106 @@ func TestFetchContextCancellation(t *testing.T) {
 	if !strings.Contains(err.Error(), "cancelled") {
 		t.Errorf("error should mention cancellation: %v", err)
 	}
+}
+
+func TestResolveChannel(t *testing.T) {
+	dev := ResolveChannel("dev")
+	if dev.BaseURL != DefaultBaseURL || dev.TrackerURL != DefaultTrackerURL {
+		t.Errorf("dev channel should track main: %+v", dev)
+	}
+	if ResolveChannel("").BaseURL != DefaultBaseURL {
+		t.Error("empty version should use the dev channel")
+	}
+
+	tagged := ResolveChannel("v0.2.0")
+	want := "https://github.com/yodeman/termdict/releases/download/v0.2.0/termdict-data/"
+	if tagged.BaseURL != want {
+		t.Errorf("tagged BaseURL = %q, want %q", tagged.BaseURL, want)
+	}
+	if tagged.TrackerURL != want+"changes_tracker.json" {
+		t.Errorf("tagged TrackerURL = %q", tagged.TrackerURL)
+	}
+	if tagged.ChecksumsURL != want+"checksums.txt" {
+		t.Errorf("tagged ChecksumsURL = %q", tagged.ChecksumsURL)
+	}
+}
+
+func TestFetchVerifiesChecksums(t *testing.T) {
+	dir := t.TempDir()
+	valid := `{"apple":{"word":"apple","definitions":[{"part_of_speech":"n.","definition":"A fruit."}]}}`
+	sum := sha256Hex([]byte(valid))
+
+	client := newTestServer(t, dir, func(routes map[string]http.HandlerFunc) {
+		routes["/checksums.txt"] = func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, "%s  wb1913_a.json\n", sum)
+		}
+		routes["/wb1913_a.json"] = func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprint(w, valid)
+		}
+	})
+
+	if err := client.Fetch(context.Background(), []string{"wb1913_a.json"}, nil); err != nil {
+		t.Fatalf("Fetch with matching checksum should succeed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "wb1913_a.json")); err != nil {
+		t.Fatalf("verified file missing: %v", err)
+	}
+}
+
+func TestFetchRejectsChecksumMismatch(t *testing.T) {
+	dir := t.TempDir()
+	client := newTestServer(t, dir, func(routes map[string]http.HandlerFunc) {
+		routes["/checksums.txt"] = func(w http.ResponseWriter, _ *http.Request) {
+			// Deliberately wrong digest for the served content.
+			_, _ = fmt.Fprintf(w, "%s  wb1913_a.json\n", strings.Repeat("ab", 32))
+		}
+	})
+
+	err := client.Fetch(context.Background(), []string{"wb1913_a.json"}, nil)
+	var fetchErr *FetchError
+	if !errors.As(err, &fetchErr) {
+		t.Fatalf("expected FetchError on checksum mismatch, got %v", err)
+	}
+	if msg := fetchErr.Failures["wb1913_a.json"].Error(); !strings.Contains(msg, "checksum mismatch") {
+		t.Errorf("failure should mention checksum mismatch: %v", msg)
+	}
+	// The tampered file must have been removed.
+	if _, statErr := os.Stat(filepath.Join(dir, "wb1913_a.json")); statErr == nil {
+		t.Error("checksum-mismatched file was not removed")
+	}
+}
+
+func TestFetchSkipsVerificationWhenManifestMissing(t *testing.T) {
+	dir := t.TempDir()
+	client := newDefaultTestServer(t, dir) // no /checksums.txt route => 404
+
+	if err := client.Fetch(context.Background(), []string{"wb1913_a.json"}, nil); err != nil {
+		t.Fatalf("unreachable checksum manifest should degrade gracefully, got %v", err)
+	}
+}
+
+func TestDownloadFull(t *testing.T) {
+	dir := t.TempDir()
+	client := newDefaultTestServer(t, dir)
+
+	downloaded, err := client.DownloadFull(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("DownloadFull: %v", err)
+	}
+	if downloaded != 26 {
+		t.Errorf("downloaded = %d, want 26 letter files", downloaded)
+	}
+
+	got, err := ReadTracker(client.TrackerPath)
+	if err != nil {
+		t.Fatalf("ReadTracker: %v", err)
+	}
+	if got["wb1913_a.json"] != "v1" || got["wb1913_b.json"] != "v2" {
+		t.Errorf("tracker not refreshed after full download: %v", got)
+	}
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

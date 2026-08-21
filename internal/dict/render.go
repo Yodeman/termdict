@@ -27,15 +27,17 @@ func RenderTUI(w io.Writer, entity Entity) error {
 }
 
 // NotFoundMessage returns the TUI-formatted block shown when a lookup
-// misses the loaded dictionary. downloadHint tells the user how to get
-// the full dictionary; it is empty in offline-only builds.
+// misses the loaded dictionary. With the embedded core installed, a
+// miss usually means a rare word that the full (downloadable) database
+// still contains.
 func NotFoundMessage(query string) string {
 	return fmt.Sprintf(`
 [::b]%s
 
 [yellow::b]No results found.[-:-:-]
 
-The word isn't in the loaded dictionary.
-Press ctrl+u to update or download the words database.
+This word isn't in the offline library.
+Press ctrl+u and choose "Download Full Dictionary" to get
+the complete word list (internet connection required).
 `, query)
 }

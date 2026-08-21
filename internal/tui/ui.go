@@ -34,7 +34,11 @@ const (
 // Updater supplies database update operations to the UI. Implemented by
 // *data.Client.
 type Updater interface {
+	// Update downloads only files that changed on the remote.
 	Update(ctx context.Context, progress data.ProgressFn) (updated int, err error)
+	// DownloadFull fetches the complete letter-file set, adding every
+	// headword missing from the embedded core.
+	DownloadFull(ctx context.Context, progress data.ProgressFn) (downloaded int, err error)
 }
 
 // message shown upon pressing/clicking help command
@@ -121,10 +125,12 @@ type UI struct {
 	updatePopup  *tview.Grid
 	updateWidget *tview.TextView
 
-	helpButton   *tview.Button
-	aboutButton  *tview.Button
-	quitButton   *tview.Button
-	updateButton *tview.Button
+	helpButton         *tview.Button
+	aboutButton        *tview.Button
+	quitButton         *tview.Button
+	updateButton       *tview.Button
+	updateDbButton     *tview.Button
+	downloadFullButton *tview.Button
 
 	updating     atomic.Bool
 	updateCtx    context.Context
@@ -283,6 +289,18 @@ func (u *UI) listSuggestions(text string) {
 // startUpdate launches a single background database update and shows
 // its progress in the update popup. Concurrent invocations are ignored.
 func (u *UI) startUpdate() {
+	u.runUpdateAction("Updating database...", u.updater.Update)
+}
+
+// startDownloadFull launches a full-dictionary download in the
+// background. Concurrent invocations are ignored.
+func (u *UI) startDownloadFull() {
+	u.runUpdateAction("Downloading full dictionary...", u.updater.DownloadFull)
+}
+
+// runUpdateAction guards against concurrent runs, shows the update
+// popup and reports progress/result through updateWidget.
+func (u *UI) runUpdateAction(runningText string, action func(context.Context, data.ProgressFn) (int, error)) {
 	if !u.updating.CompareAndSwap(false, true) {
 		u.pages.ShowPage("update page")
 		return
@@ -292,11 +310,11 @@ func (u *UI) startUpdate() {
 	go func() {
 		defer cancel()
 
-		updated, err := u.updater.Update(ctx, func(done, total int, current string) {
+		updated, err := action(ctx, func(done, total int, current string) {
 			u.app.QueueUpdateDraw(func() {
 				if u.updating.Load() {
 					u.updateWidget.SetText(fmt.Sprintf(
-						"Updating database... (%d/%d)\n%s", done, total, current))
+						"%s (%d/%d)\n%s", runningText, done, total, current))
 				}
 			})
 		})

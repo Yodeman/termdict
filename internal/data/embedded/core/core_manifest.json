@@ -1,0 +1,198 @@
+{
+  "format": 1,
+  "generator_version": "1",
+  "frequency_source": {
+    "name": "FrequencyWords en_50k (OpenSubtitles 2018 via OPUS)",
+    "url": "https://github.com/hermitdave/FrequencyWords",
+    "license": "CC-BY-SA-4.0",
+    "file": "en_50k.txt",
+    "sha256": "5351ff405b1126ef555791dd4d9798a48e3e9a501a9fc481a9da957752cfb458"
+  },
+  "total_entries": 22235,
+  "bytes_uncompressed": 14369462,
+  "bytes_compressed": 2519648,
+  "files": [
+    {
+      "name": "wb1913_a.json.gz",
+      "sha256": "7198bfe4affeb8dd481cfdf37c606dfa5b3655368e6a3a236a34bb6b72bb5736",
+      "entries": 1395,
+      "bytes_uncompressed": 798614,
+      "bytes_compressed": 140064
+    },
+    {
+      "name": "wb1913_b.json.gz",
+      "sha256": "5af70d899c4507663a7cc4ed8e53ae9546199943cde1322b9aff0f281eec0e99",
+      "entries": 1337,
+      "bytes_uncompressed": 922626,
+      "bytes_compressed": 159732
+    },
+    {
+      "name": "wb1913_c.json.gz",
+      "sha256": "0ad006ecffa3a9a165bce12b1bfe816297e39021859894ce33e66ee5061e4164",
+      "entries": 2222,
+      "bytes_uncompressed": 1414850,
+      "bytes_compressed": 240179
+    },
+    {
+      "name": "wb1913_d.json.gz",
+      "sha256": "33a09d49893fc2ede5ccdb1703fd12737311a4213fa0ae7aa43891d14461b453",
+      "entries": 1447,
+      "bytes_uncompressed": 878428,
+      "bytes_compressed": 147619
+    },
+    {
+      "name": "wb1913_e.json.gz",
+      "sha256": "169e1dbbe14b133f4fd976dbe00f91c80cb2213188f1249020f3797c8d565b98",
+      "entries": 924,
+      "bytes_uncompressed": 520019,
+      "bytes_compressed": 93168
+    },
+    {
+      "name": "wb1913_f.json.gz",
+      "sha256": "262cb6b05cd808f2ebe7b7a33217fef07286c754f6f9a8384b6d1503e09da501",
+      "entries": 1033,
+      "bytes_uncompressed": 726274,
+      "bytes_compressed": 129072
+    },
+    {
+      "name": "wb1913_g.json.gz",
+      "sha256": "d87431d46b137a0b1b5aea3d235bcff8f26df83decb817aa21b5af5ea569ddfb",
+      "entries": 694,
+      "bytes_uncompressed": 432194,
+      "bytes_compressed": 77896
+    },
+    {
+      "name": "wb1913_h.json.gz",
+      "sha256": "b8de2ef11b1f2c2567c8876ec7f5c4e08e1c32cf096a924130dd875fe63ab96f",
+      "entries": 776,
+      "bytes_uncompressed": 488157,
+      "bytes_compressed": 87428
+    },
+    {
+      "name": "wb1913_i.json.gz",
+      "sha256": "79f16c2ac3e854160a7ee44b2b67a3c5f218afb7cef5040f8f26abaca7bfa631",
+      "entries": 957,
+      "bytes_uncompressed": 532952,
+      "bytes_compressed": 92504
+    },
+    {
+      "name": "wb1913_j.json.gz",
+      "sha256": "3f13f4a723ad42ed54ce47b3ea5f5defbb4ecb4b1dab479ee791f7e98bff2461",
+      "entries": 208,
+      "bytes_uncompressed": 129474,
+      "bytes_compressed": 23886
+    },
+    {
+      "name": "wb1913_k.json.gz",
+      "sha256": "c3529c0097b424575d100caf9d1262915cb88a1c2fef7c32f7b0a8e854c693ac",
+      "entries": 167,
+      "bytes_uncompressed": 98586,
+      "bytes_compressed": 17954
+    },
+    {
+      "name": "wb1913_l.json.gz",
+      "sha256": "678f64e5535a6534a931b731edea40adb28eac419f3776ca36f6e4ed4e7f0052",
+      "entries": 752,
+      "bytes_uncompressed": 518030,
+      "bytes_compressed": 92980
+    },
+    {
+      "name": "wb1913_m.json.gz",
+      "sha256": "582e55693641d279d66a4d936d9c1354681b01e0cdab126a3fbb565c87d3a954",
+      "entries": 1154,
+      "bytes_uncompressed": 672168,
+      "bytes_compressed": 119748
+    },
+    {
+      "name": "wb1913_n.json.gz",
+      "sha256": "baa85c3cab94c18029640a9d6ea429b426896b3a2fab6ceecb9073539f5b5495",
+      "entries": 420,
+      "bytes_uncompressed": 239060,
+      "bytes_compressed": 41973
+    },
+    {
+      "name": "wb1913_o.json.gz",
+      "sha256": "96cecb15e4de562931803ec8b6f740a9ce68289431fcb9945b3ccac976662dde",
+      "entries": 503,
+      "bytes_uncompressed": 287735,
+      "bytes_compressed": 51640
+    },
+    {
+      "name": "wb1913_p.json.gz",
+      "sha256": "58bffb723bc1c0fed8e9e5edea24020aa116eea16d8b3f9fc0bb6b05ae1b8a31",
+      "entries": 1728,
+      "bytes_uncompressed": 1146721,
+      "bytes_compressed": 203209
+    },
+    {
+      "name": "wb1913_q.json.gz",
+      "sha256": "ad69cb83e8bd1d2a4af828b6f913ec2fbacdaa349e469af5015f5a5ab0fb004a",
+      "entries": 95,
+      "bytes_uncompressed": 71027,
+      "bytes_compressed": 13521
+    },
+    {
+      "name": "wb1913_r.json.gz",
+      "sha256": "635047c409a198b4af09ef80c1839d3e1668129975a7fb3014610429c14daafb",
+      "entries": 1228,
+      "bytes_uncompressed": 893940,
+      "bytes_compressed": 153004
+    },
+    {
+      "name": "wb1913_s.json.gz",
+      "sha256": "5583754181128cf831ec0d5143936194e1edb556be2d185e753f6c13ab32b99b",
+      "entries": 2647,
+      "bytes_uncompressed": 1912205,
+      "bytes_compressed": 330787
+    },
+    {
+      "name": "wb1913_t.json.gz",
+      "sha256": "57f1ad5164e3148dc784f2239c4ff46719b2ed8dd46de16cff45e0ca1144568f",
+      "entries": 1151,
+      "bytes_uncompressed": 799848,
+      "bytes_compressed": 142459
+    },
+    {
+      "name": "wb1913_u.json.gz",
+      "sha256": "1f65acde74ed749fea7f4658a583adee04e68b6e0a92019ed1a52462f849c3d7",
+      "entries": 300,
+      "bytes_uncompressed": 149139,
+      "bytes_compressed": 26904
+    },
+    {
+      "name": "wb1913_v.json.gz",
+      "sha256": "5112d42bb94e25b25f8b27d7d32ae8d9945ae0143a391c7f6c002d924abc1dd1",
+      "entries": 354,
+      "bytes_uncompressed": 231035,
+      "bytes_compressed": 43851
+    },
+    {
+      "name": "wb1913_w.json.gz",
+      "sha256": "cf7ef69628cfcf6c2556eba7f81ad0a7b1fe031f5c4ea16c6fd8960a3d29d944",
+      "entries": 637,
+      "bytes_uncompressed": 449587,
+      "bytes_compressed": 78210
+    },
+    {
+      "name": "wb1913_x.json.gz",
+      "sha256": "e76d69e08699073213cbb671736edf76858eb5fc8470255649cfc6ae9e217b9e",
+      "entries": 3,
+      "bytes_uncompressed": 1305,
+      "bytes_compressed": 507
+    },
+    {
+      "name": "wb1913_y.json.gz",
+      "sha256": "e9781fb24e727c334de6fadaf33a4506061b9d001839f8d589c3f763d1cd274e",
+      "entries": 76,
+      "bytes_uncompressed": 42089,
+      "bytes_compressed": 8309
+    },
+    {
+      "name": "wb1913_z.json.gz",
+      "sha256": "84cf2ceddb4f0958bbeb16e7c9f9eca61e3e5c5894d395df861255f8ba81bde2",
+      "entries": 27,
+      "bytes_uncompressed": 13399,
+      "bytes_compressed": 3044
+    }
+  ]
+}
