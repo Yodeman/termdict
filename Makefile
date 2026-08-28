@@ -10,7 +10,7 @@ LDFLAGS := -s -w \
 # Source-build install destination (make install).
 PREFIX ?= $(shell go env GOPATH)/bin
 
-.PHONY: run build clean test vet fmt lint tidy install
+.PHONY: run build clean test test-e2e vet fmt lint tidy install
 
 run:
 	go run .
@@ -29,6 +29,9 @@ clean:
 
 test:
 	go test ./... -race
+
+test-e2e:
+	go test -run 'E2E|TerminalMatrix' ./internal/... -v
 
 vet:
 	go vet ./...

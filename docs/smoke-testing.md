@@ -88,7 +88,7 @@ Seed a legacy install before first launch of the new binary:
 Run the automated Unix matrix first:
 
 ```sh
-sh scripts/pty_matrix.sh   # 4 themes x {8-color, 256-color, truecolor}
+go test ./internal/tui -run TestTerminalMatrix -v   # 4 themes x {8-color, 256-color, truecolor}
 ```
 
 Then manually on Windows (Windows Terminal **and** legacy conhost —

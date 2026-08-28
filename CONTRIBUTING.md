@@ -24,10 +24,9 @@ pull request, and allow for some discussion.
 Before opening a PR, make sure the local gates pass:
 
 ```sh
-make test   # go test ./... -race
+make test   # go test ./... -race (includes the end-to-end tests)
 make lint   # golangci-lint (0 issues expected)
 make vet
-sh scripts/cli_e2e.sh
 ```
 
 CI runs the same checks on Linux, macOS and Windows with the two

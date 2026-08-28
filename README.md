@@ -184,10 +184,9 @@ to decide which words ship offline.
 ## Development
 
 ```sh
-make test      # go test ./... -race
+make test      # go test ./... -race (unit + end-to-end)
 make lint      # golangci-lint
 make build     # bin/termdict with version metadata
-sh scripts/cli_e2e.sh
 go run ./cmd/dbasecheck   # validate database invariants
 ```
 

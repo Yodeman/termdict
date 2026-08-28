@@ -35,7 +35,9 @@ jobs:
       - name: Vet
         run: go vet ./...
       - name: Test (race detector)
-        run: go test -race ./...
+        # -short skips the end-to-end tests; the dedicated e2e job runs
+        # the full suite so the matrix stays fast.
+        run: go test -race -short ./...
 
   lint:
     # Single linux job: golangci-lint results are OS-independent for
@@ -52,17 +54,17 @@ jobs:
           version: latest
 
   e2e:
-    # CLI end-to-end contract (exit codes, piping) on the fastest runner.
+    # Full suite including the end-to-end tests: the CLI contract
+    # (exit codes, piping) and the scripted-pty focus + terminal-matrix
+    # regressions. The pty harness requires unix.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
-      - name: CLI end-to-end checks
-        run: sh scripts/cli_e2e.sh
-      - name: Focus regression (scripted pty)
-        run: sh scripts/focus_regression.sh
+      - name: Full test suite (unit + end-to-end)
+        run: go test -race ./...
 
   sh-install-smoke:
     # Proves the documented piped one-liner grammar end-to-end:
