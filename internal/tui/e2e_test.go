@@ -3,6 +3,7 @@
 package tui
 
 import (
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -248,5 +249,69 @@ func TestTerminalMatrix(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestResizeRerender reproduces the QA freeze: resizing the terminal
+// must re-render the definition at the new width and leave the app
+// responsive. Before the fix, the width-change hook called
+// QueueUpdateDraw from inside tview's draw (which holds the app lock
+// while BeforeDraw hooks run) — QueueUpdate blocks on an unbuffered
+// channel the event loop can no longer service, deadlocking the app.
+func TestResizeRerender(t *testing.T) {
+	skipIfShort(t)
+	s := newSession(t, nil)
+
+	// Define a word so the definition pane has wrapped content.
+	s.Send([]byte("time"))
+	s.WaitFor(3*time.Second, func(s *e2etest.Screen) bool {
+		return strings.Contains(s.Text(), "part of speech") ||
+			strings.Contains(s.Text(), "Noun")
+	})
+	s.Send([]byte("\r"))
+	s.WaitFor(3*time.Second, func(s *e2etest.Screen) bool {
+		return !strings.Contains(s.Text(), "Type a word to begin")
+	})
+
+	// Widen the terminal.
+	s.Resize(160, rows-1)
+
+	// Re-layout + re-render proof: rows longer than the old 100-column
+	// layout only exist once the app redraws at the new size (a frozen
+	// or deadlocked app keeps the old layout forever).
+	reLaidOut := s.WaitFor(5*time.Second, func(s *e2etest.Screen) bool {
+		longest := 0
+		for _, line := range strings.Split(s.Text(), "\n") {
+			if len([]rune(line)) > longest {
+				longest = len([]rune(line))
+			}
+		}
+		return longest > 100
+	})
+	if !reLaidOut {
+		_ = os.WriteFile("/tmp/opencode/live-raw-after-resize.bin", s.Raw(), 0o644)
+		text := s.Screen().Text()
+		longest := 0
+		var longestLine string
+		for _, line := range strings.Split(text, "\n") {
+			if len([]rune(line)) > longest {
+				longest = len([]rune(line))
+				longestLine = line
+			}
+		}
+		t.Errorf("app did not re-layout after resize; maxRow=%d rawBytes=%d longestLine=%q",
+			longest, len(s.Raw()), longestLine)
+	}
+	if text := s.Screen().Text(); !strings.Contains(text, "Noun") && !strings.Contains(text, "Verb (transitive)") {
+		t.Errorf("definition content missing after resize:\n%s", text)
+	}
+
+	// Responsiveness probe: a deadlocked app cannot move focus.
+	s.Send([]byte(tabKey))
+	if !s.WaitFor(3*time.Second, func(s *e2etest.Screen) bool {
+		return focusedPane(s) == "suggestions" ||
+			focusedPane(s) == "definition"
+	}) {
+		t.Fatal("app froze after resize (no focus response to Tab)")
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/creack/pty"
@@ -59,6 +60,28 @@ func (s *Screen) Clear() {
 		}
 	}
 	s.x, s.y = 0, 0
+}
+
+// Resize grows or shrinks the emulator grid to match the terminal,
+// preserving existing cells (needed for mid-session terminal resizes:
+// without this, columns beyond the initial width would be dropped and
+// post-resize layouts would be invisible to tests).
+func (s *Screen) Resize(cols, rows int) {
+	blank := Cell{Ch: ' ', FG: defaultFG(), BG: defaultBG()}
+	newCells := make([][]Cell, rows)
+	for y := range newCells {
+		newCells[y] = make([]Cell, cols)
+		for x := range newCells[y] {
+			newCells[y][x] = blank
+		}
+		if y < len(s.cells) {
+			copy(newCells[y], s.cells[y][:min(cols, len(s.cells[y]))])
+		}
+	}
+	s.cells = newCells
+	s.cols, s.rows = cols, rows
+	s.x = clamp(s.x, 0, cols-1)
+	s.y = clamp(s.y, 0, rows-1)
 }
 
 // Text returns the visible screen contents, right-trimmed per row.
@@ -404,9 +427,17 @@ func (s *PTYSession) SettleDrain(d time.Duration) {
 	s.Screen()
 }
 
-// Resize changes the pty window size (tcell full-repaints in response).
+// Resize changes the pty window size (tcell full-repaints in response)
+// and keeps the emulator grid in sync. The explicit SIGWINCH is a
+// belt-and-braces delivery: the TIOCSWINSZ ioctl signals the tty's
+// foreground process group, but some sandboxed environments do not
+// propagate it to the session leader.
 func (s *PTYSession) Resize(cols, rows int) {
 	_ = pty.Setsize(s.tty, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
+	_ = s.cmd.Process.Signal(syscall.SIGWINCH)
+	s.mu.Lock()
+	s.screen.Resize(cols, rows)
+	s.mu.Unlock()
 }
 
 // Close kills the child and releases the terminal.
@@ -417,3 +448,6 @@ func (s *PTYSession) Close() {
 	_ = s.tty.Close()
 	_ = s.cmd.Wait()
 }
+
+// Dims exposes the emulator grid size for diagnostics.
+func (s *Screen) Dims() (int, int) { return s.cols, s.rows }

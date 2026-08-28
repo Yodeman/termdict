@@ -143,6 +143,7 @@ type UI struct {
 	pageReturnFocus    tview.Primitive // focus to restore when a popup closes
 	lastWord           string          // word currently shown in the definition pane
 	lastRenderWidth    int             // terminal width of the last definition render
+	inBeforeDraw       atomic.Bool     // true while inside the app's BeforeDraw hook
 
 	updating     atomic.Bool
 	updateCtx    context.Context
@@ -203,13 +204,24 @@ func (u *UI) Run() error {
 			}
 		}
 		// The definition renderer wraps to the pane width, so a width
-		// change must re-render the current content. The re-render is
-		// queued (SetText from inside a draw would re-enter app.Draw).
+		// change must re-render the current content.
+		//
+		// CONSTRAINT: this hook runs inside Application.draw() while the
+		// application lock is held. QueueUpdate/QueueUpdateDraw would
+		// block forever here (they send on an unbuffered channel that
+		// only the event loop drains, and the event loop is busy in this
+		// very draw). Mutating the TextView directly is safe — its lock
+		// is independent, and because BeforeDraw runs before all
+		// primitive draws, the in-flight draw renders the new content.
+		// The definitionBox changed-hook skips app.Draw while the flag
+		// is set, preventing the lock re-entry.
 		if width > 0 && width != u.lastRenderWidth {
 			widthChanged := u.lastRenderWidth != 0
 			u.lastRenderWidth = width
 			if widthChanged {
-				u.app.QueueUpdateDraw(func() { u.rerenderDefinition() })
+				u.inBeforeDraw.Store(true)
+				u.rerenderDefinition()
+				u.inBeforeDraw.Store(false)
 			}
 		}
 		return false
@@ -415,6 +427,9 @@ func (u *UI) initializeDefinitionWidget() {
 	u.definitionBox.SetTitle("[::bi]Definition")
 	u.definitionBox.SetBorderColor(u.theme.Border)
 	u.definitionBox.SetChangedFunc(func() {
+		if u.inBeforeDraw.Load() {
+			return // the in-flight draw renders the new text; app.Draw here would deadlock on the app lock
+		}
 		u.app.Draw()
 	})
 }
