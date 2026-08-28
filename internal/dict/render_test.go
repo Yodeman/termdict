@@ -23,12 +23,15 @@ func TestRenderTUI(t *testing.T) {
 	for _, want := range []string{
 		"[::b]test", // headword header
 		"─",         // muted rule
-		" [::b]1.[-:-:-] [::b]n.[-:-:-] A trial.", // numbered sense + badge
-		" [::b]2.[-:-:-] [::b]v. t.[-:-:-] To try.",
+		"  [::b] n. [-:-:-] [::b]1.[-:-:-] A trial.", // badge + numbered sense
+		"  [::b] v. t. [-:-:-] [::b]2.[-:-:-] To try.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q;\ngot:\n%s", want, out)
 		}
+	}
+	if strings.Count(out, "\n\n") < 2 {
+		t.Error("expected blank-line separation between sense blocks")
 	}
 	if strings.Contains(out, "part of speech:") || strings.Contains(out, "└") {
 		t.Error("old label/tree format leaked into new renderer")
@@ -44,7 +47,7 @@ func TestRenderTUIEmptyPOS(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := b.String()
-	if !strings.Contains(out, " [::b]1.[-:-:-] Alone.") {
+	if !strings.Contains(out, "  [::b]1.[-:-:-] Alone.") {
 		t.Errorf("missing POS badge should render number + text only; got:\n%s", out)
 	}
 }

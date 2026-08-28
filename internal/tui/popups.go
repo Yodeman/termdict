@@ -7,16 +7,30 @@ import (
 	"github.com/yodeman/termdict/internal/config"
 )
 
+// trapTabKeys swallows Tab/Backtab on popup text views. tview's
+// TextView fires DoneFunc for those keys exactly as for Escape, so an
+// un-trapped Tab silently CLOSED the popup — which read as "Esc stops
+// working" (QA v2 issue 3). Tab inside popups is a deliberate no-op:
+// the help and update panes have a single focusable widget (Esc to
+// leave) and the About modal cycles its own buttons via tview's
+// built-in Modal handling.
+func trapTabKeys(event *tcell.EventKey) *tcell.EventKey {
+	if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
+		return nil
+	}
+	return event
+}
+
 // initializePopups initializes the popup widgets used to display
 // messages.
 func (u *UI) initializePopups() {
 	helpWidget := tview.NewTextView().
 		SetDoneFunc(func(_ tcell.Key) {
-			u.pages.HidePage("help page")
-			u.app.SetFocus(u.searchInputField)
+			u.hidePopup("help page")
 		}).
 		SetText(helpMessage(u.theme)).
 		SetDynamicColors(true)
+	helpWidget.SetInputCapture(trapTabKeys)
 	helpWidget.SetBorder(true)
 	helpWidget.SetTitle("[::bi]Help — [Esc[] close")
 	helpWidget.SetBackgroundColor(u.theme.Background)
@@ -31,18 +45,17 @@ func (u *UI) initializePopups() {
 		AddButtons([]string{"close"}).
 		SetText(aboutMessage(config.AppVersion)).
 		SetDoneFunc(func(_ int, _ string) {
-			u.pages.HidePage("about page")
-			u.app.SetFocus(u.searchInputField)
+			u.hidePopup("about page")
 		})
 
 	u.updateWidget = tview.NewTextView().
 		SetDoneFunc(func(_ tcell.Key) {
-			u.pages.HidePage("update page")
-			u.app.SetFocus(u.searchInputField)
+			u.hidePopup("update page")
 		}).
 		SetText("Updating database...").
 		SetChangedFunc(func() { u.app.Draw() }).
 		SetDynamicColors(true)
+	u.updateWidget.SetInputCapture(trapTabKeys)
 	u.updateWidget.SetBorder(true)
 	u.updateWidget.SetTitle("[::bi]Database — [Esc[] close / cancel")
 	u.updateWidget.SetBackgroundColor(u.theme.Background)
@@ -76,8 +89,7 @@ func (u *UI) initializePopups() {
 				u.cancelAction() // first Esc cancels; result pane explains
 				return nil
 			}
-			u.pages.HidePage("update page")
-			u.app.SetFocus(u.searchInputField)
+			u.hidePopup("update page")
 			return nil
 		}
 		return event

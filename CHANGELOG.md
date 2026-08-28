@@ -34,6 +34,21 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - The installer security note now states precisely what its SHA256
   verification does and does not protect against.
 
+### Fixed
+
+- Tab / Shift+Tab pane cycling wedged on the search pane after one
+  full cycle (focus must target primitives, not their Box wrappers —
+  tview's InputField mirrors a stale focus flag into its inner text
+  area otherwise).
+- Popups (Help/About/Update) received no keyboard focus while visible,
+  so Esc appeared unreliable; and Tab inside a popup silently closed
+  it (tview TextView fires DoneFunc for Tab). Tab is now a trapped
+  no-op inside popups, and closing any popup restores the focus that
+  was active when it opened.
+- Definition pane readability: blank line between numbered senses and
+  a reversed-color part-of-speech badge (chip) instead of plain inline
+  text.
+
 ## [v0.2.0] - 2026-08-21
 
 ### Added

@@ -61,6 +61,8 @@ jobs:
           go-version: "1.26.x"
       - name: CLI end-to-end checks
         run: sh scripts/cli_e2e.sh
+      - name: Focus regression (scripted pty)
+        run: sh scripts/focus_regression.sh
 
   sh-install-smoke:
     # Proves the documented piped one-liner grammar end-to-end:

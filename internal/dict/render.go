@@ -13,7 +13,8 @@ import (
 // the mono (NO_COLOR) theme produces.
 type RenderOptions struct {
 	HeaderTag string // bold accent for the headword line
-	AccentTag string // bold accent for sense numbers and POS badges
+	AccentTag string // bold accent for sense numbers
+	BadgeTag  string // part-of-speech chip: fg/background reversed colors
 	MutedTag  string // muted for the rule and alternate spellings
 	ResetTag  string // closes a themed tag ("[-:-:-]")
 }
@@ -23,15 +24,19 @@ func DefaultRenderOptions() RenderOptions {
 	return RenderOptions{
 		HeaderTag: "[::b]",
 		AccentTag: "[::b]",
+		BadgeTag:  "[::b]",
 		MutedTag:  "[::i]",
 		ResetTag:  "[-:-:-]",
 	}
 }
 
 // RenderTUI writes entity to w formatted with tview color markup:
-// an accent headword header over a muted rule, then numbered senses
-// with inline part-of-speech badges, and a muted alternate-spellings
-// line when present. Definition prose itself is rendered verbatim.
+// an accent headword header over a muted rule, then — per the approved
+// sketch (planning report B.4) — one block per sense: a reversed-color
+// part-of-speech badge followed by the accent sense number and the
+// definition, with a blank line between blocks so entries stay
+// scannable. Alternate spellings render as a muted italic trailing
+// line. Definition prose itself is rendered verbatim.
 func RenderTUI(w io.Writer, entity Entity, opts RenderOptions) error {
 	var b strings.Builder
 
@@ -39,11 +44,12 @@ func RenderTUI(w io.Writer, entity Entity, opts RenderOptions) error {
 	fmt.Fprintf(&b, "%s%s%s\n\n", opts.MutedTag, strings.Repeat("─", 32), opts.ResetTag)
 
 	for i, def := range entity.WordDefinitions {
-		fmt.Fprintf(&b, " %s%d.%s ", opts.AccentTag, i+1, opts.ResetTag)
+		fmt.Fprintf(&b, "  ")
 		if pos := strings.TrimSpace(def.PartOfSpeech); pos != "" {
-			fmt.Fprintf(&b, "%s%s%s ", opts.AccentTag, pos, opts.ResetTag)
+			fmt.Fprintf(&b, "%s %s %s", opts.BadgeTag, pos, opts.ResetTag)
 		}
-		fmt.Fprintf(&b, "%s\n", strings.TrimRight(def.WordDefinition, "\n"))
+		fmt.Fprintf(&b, " %s%d.%s %s\n\n", opts.AccentTag, i+1, opts.ResetTag,
+			strings.TrimRight(def.WordDefinition, "\n"))
 	}
 
 	if len(entity.Spellings) > 0 {

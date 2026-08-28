@@ -143,6 +143,7 @@ type UI struct {
 	currentSuggestions []string // clean words behind the styled list items
 	buttonsHidden      bool     // button bar hidden on narrow terminals
 	spinnerActive      atomic.Bool
+	pageReturnFocus    tview.Primitive // focus to restore when a popup closes
 
 	updating     atomic.Bool
 	updateCtx    context.Context
@@ -265,27 +266,65 @@ func (u *UI) Run() error {
 	return nil
 }
 
-// wireWidgetNavigation lets tab and shift+tab move between widgets.
+// wireWidgetNavigation lets tab and shift+tab rotate focus through
+// search -> suggestions -> definition and back.
+//
+// The cycle focuses the PRIMITIVES, never their bare Box wrappers:
+// tview's InputField mirrors InputField.HasFocus() into its inner text
+// area on every draw (inputfield.go: textArea.hasFocus = i.HasFocus()),
+// and only InputField.Blur() clears that flag. Focusing the raw Box
+// leaves the flag latched, so InputField.HasFocus() stays true and the
+// grid's focus delegation (input field listed before the suggestions
+// list) permanently routes every Tab back to the search pane.
 func (u *UI) wireWidgetNavigation() {
-	selections := []*tview.Box{
-		u.searchInputField.Box,
-		u.searchListField.Box,
-		u.definitionBox.Box,
-	}
-	for idx := range selections {
-		box := selections[idx]
-		box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	panes := []tview.Primitive{u.searchInputField, u.searchListField, u.definitionBox}
+	for idx := range panes {
+		// tview's chainable setters return *Box, so the capture-target
+		// interface must match that exact signature.
+		capturer := panes[idx].(interface {
+			SetInputCapture(func(*tcell.EventKey) *tcell.EventKey) *tview.Box
+		})
+		capturer.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyTab:
-				u.app.SetFocus(selections[(idx+1)%len(selections)])
+				u.app.SetFocus(panes[(idx+1)%len(panes)])
 				return nil
 			case tcell.KeyBacktab:
-				u.app.SetFocus(
-					selections[(idx+len(selections)-1)%len(selections)])
+				u.app.SetFocus(panes[(idx+len(panes)-1)%len(panes)])
 				return nil
 			}
 			return event
 		})
+	}
+}
+
+// showPopup opens a named page, remembering the current focus so
+// hidePopup can return the user to wherever they were (QA v2 issue 3).
+//
+// The popup must also RECEIVE focus: tview's Pages routes key events to
+// the page containing the focused primitive, so a visible-but-unfocused
+// popup silently sends Esc/Tab to the main panes beneath it — Esc could
+// never reach the popup's close handler and Tab desynced the pane cycle
+// under the overlay. GetPage + SetFocus lets each page's own focus flags
+// pick the right widget (help/update text views, the About modal's
+// button form).
+func (u *UI) showPopup(name string) {
+	u.pageReturnFocus = u.app.GetFocus()
+	u.pages.ShowPage(name)
+	if page := u.pages.GetPage(name); page != nil {
+		u.app.SetFocus(page)
+	}
+}
+
+// hidePopup closes a named page and restores the focus saved when it
+// opened, falling back to the search field.
+func (u *UI) hidePopup(name string) {
+	u.pages.HidePage(name)
+	if u.pageReturnFocus != nil {
+		u.app.SetFocus(u.pageReturnFocus)
+		u.pageReturnFocus = nil
+	} else {
+		u.app.SetFocus(u.searchInputField)
 	}
 }
 
@@ -294,9 +333,9 @@ func (u *UI) wireGlobalKeys() {
 	u.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyF1:
-			u.pages.ShowPage("help page")
+			u.showPopup("help page")
 		case tcell.KeyF2:
-			u.pages.ShowPage("about page")
+			u.showPopup("about page")
 		case tcell.KeyCtrlQ:
 			u.app.Stop()
 		case tcell.KeyCtrlU:
@@ -334,10 +373,20 @@ func (u *UI) setFooterReady() {
 }
 
 // renderOptions derives the themed markup snippets for dict.RenderTUI.
+// The part-of-speech badge reverses the theme colors (theme background
+// text on an accent chip) so the badge reads as a distinct element, not
+// as body text.
 func (u *UI) renderOptions() dict.RenderOptions {
+	badge := "[::b]"
+	if u.theme.Accent != tcell.ColorDefault {
+		fr, fg, fb := u.theme.Background.RGB()
+		br, bg, bb := u.theme.Accent.RGB()
+		badge = fmt.Sprintf("[#%02x%02x%02x:#%02x%02x%02x:b]", fr, fg, fb, br, bg, bb)
+	}
 	return dict.RenderOptions{
 		HeaderTag: u.theme.TagStyle(u.theme.Header, "b"),
 		AccentTag: u.theme.TagStyle(u.theme.Accent, "b"),
+		BadgeTag:  badge,
 		MutedTag:  u.theme.TagStyle(u.theme.Muted, "i"),
 		ResetTag:  "[-:-:-]",
 	}

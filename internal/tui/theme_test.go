@@ -2,9 +2,12 @@ package tui
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
+
+	"github.com/yodeman/termdict/internal/dict"
 )
 
 func TestSelect(t *testing.T) {
@@ -127,5 +130,50 @@ func TestThemeTag(t *testing.T) {
 	want := "[#74b3ff::b]"
 	if tag != want {
 		t.Errorf("Tag = %q, want %q", tag, want)
+	}
+}
+
+// The contrast suite above validates the tokens; this validates that
+// the definition renderer actually APPLIES them (QA v2 issue 1,
+// action 3): themed options must embed four distinct tags in the
+// output — header, badge chip, accent numbers and muted rule.
+func TestRenderOptionsAppliedToOutput(t *testing.T) {
+	ocean, _ := Select(func(string) string { return "" })
+	ro := dict.RenderOptions{
+		HeaderTag: ocean.TagStyle(ocean.Header, "b"),
+		AccentTag: ocean.TagStyle(ocean.Accent, "b"),
+		BadgeTag:  "[#1e1e2e:#74b3ff:b]",
+		MutedTag:  ocean.TagStyle(ocean.Muted, "i"),
+		ResetTag:  "[-:-:-]",
+	}
+	if ro.HeaderTag == ro.AccentTag {
+		t.Fatal("header and accent tags must differ for a visible hierarchy")
+	}
+
+	var b strings.Builder
+	if err := dict.RenderTUI(&b, dict.Entity{
+		Word: "test",
+		WordDefinitions: []dict.Definition{
+			{PartOfSpeech: "n.", WordDefinition: "A trial."},
+		},
+	}, ro); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+
+	for name, tag := range map[string]string{
+		"header": ro.HeaderTag,
+		"badge":  ro.BadgeTag,
+		"accent": ro.AccentTag,
+		"muted":  ro.MutedTag,
+	} {
+		if !strings.Contains(out, tag) {
+			t.Errorf("rendered output never applies the %s tag (%q);\ngot:\n%s", name, tag, out)
+		}
+	}
+	// The badge chip must carry a background color (the reversed-color
+	// treatment that makes it read as a badge, not body text).
+	if !strings.Contains(out, "] n. [") {
+		t.Errorf("badge chip structure missing:\n%s", out)
 	}
 }
