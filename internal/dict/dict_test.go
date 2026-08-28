@@ -165,3 +165,26 @@ func TestSuggestCutoffAtMax(t *testing.T) {
 		t.Errorf("Suggest(a,5) = %v", got)
 	}
 }
+
+func TestCountPrefix(t *testing.T) {
+	svc := testService(t) // apple, applied, apply, banana, zebra
+
+	cases := []struct {
+		prefix string
+		want   int
+	}{
+		{"", 0},
+		{"app", 3},
+		{"APPL", 3}, // case-insensitive
+		{"apple", 1},
+		{"appl", 3},
+		{"b", 1},
+		{"zzz", 0},
+		{"applf", 0}, // between 'apple' and 'apply', matches nothing
+	}
+	for _, tc := range cases {
+		if got := svc.CountPrefix(tc.prefix); got != tc.want {
+			t.Errorf("CountPrefix(%q) = %d, want %d", tc.prefix, got, tc.want)
+		}
+	}
+}

@@ -15,31 +15,60 @@ func TestRenderTUI(t *testing.T) {
 	}
 
 	var b strings.Builder
-	if err := RenderTUI(&b, entity); err != nil {
+	if err := RenderTUI(&b, entity, DefaultRenderOptions()); err != nil {
 		t.Fatalf("RenderTUI: %v", err)
 	}
 
 	out := b.String()
 	for _, want := range []string{
-		"[::b]test",
-		"part of speech: [::bi]n.",
-		"[::BI]└A trial.",
-		"part of speech: [::bi]v. t.",
-		"[::BI]└To try.",
+		"[::b]test", // headword header
+		"─",         // muted rule
+		" [::b]1.[-:-:-] [::b]n.[-:-:-] A trial.", // numbered sense + badge
+		" [::b]2.[-:-:-] [::b]v. t.[-:-:-] To try.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q;\ngot:\n%s", want, out)
 		}
 	}
+	if strings.Contains(out, "part of speech:") || strings.Contains(out, "└") {
+		t.Error("old label/tree format leaked into new renderer")
+	}
+}
+
+func TestRenderTUIEmptyPOS(t *testing.T) {
+	var b strings.Builder
+	if err := RenderTUI(&b, Entity{
+		Word:            "solo",
+		WordDefinitions: []Definition{{PartOfSpeech: "", WordDefinition: "Alone."}},
+	}, DefaultRenderOptions()); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, " [::b]1.[-:-:-] Alone.") {
+		t.Errorf("missing POS badge should render number + text only; got:\n%s", out)
+	}
 }
 
 func TestRenderTUIEmptyEntity(t *testing.T) {
 	var b strings.Builder
-	if err := RenderTUI(&b, Entity{}); err != nil {
+	if err := RenderTUI(&b, Entity{}, DefaultRenderOptions()); err != nil {
 		t.Fatalf("RenderTUI: %v", err)
 	}
-	if strings.Contains(b.String(), "└") {
-		t.Error("empty entity should render no definitions")
+	if strings.Contains(b.String(), "1.") {
+		t.Error("empty entity should render no senses")
+	}
+}
+
+func TestRenderTUIMutedSpellings(t *testing.T) {
+	var b strings.Builder
+	if err := RenderTUI(&b, Entity{
+		Word:      "test",
+		Spellings: []string{"teste"},
+	}, DefaultRenderOptions()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "[::i]alternate spellings: teste[-:-:-]") {
+		t.Errorf("spellings should render muted italic; got:\n%s", b.String())
 	}
 }
 

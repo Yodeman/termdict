@@ -5,6 +5,29 @@ import (
 	"strings"
 )
 
+// CountPrefix returns the total number of headwords beginning with
+// prefix (case-insensitive). Used to report truncation when the
+// suggestion list is capped; an empty prefix returns 0.
+func (s *Service) CountPrefix(prefix string) int {
+	prefix = strings.ToLower(strings.TrimSpace(prefix))
+	if prefix == "" {
+		return 0
+	}
+
+	idx, _ := slices.BinarySearch(s.words, prefix)
+	count := 0
+	for i := idx; i < len(s.words); i++ {
+		if strings.HasPrefix(s.words[i], prefix) {
+			count++
+			continue
+		}
+		if s.words[i] > prefix {
+			break
+		}
+	}
+	return count
+}
+
 // Suggest returns up to max words beginning with prefix, in
 // lexicographic order. Matching is case-insensitive. An empty prefix or
 // a non-positive max returns nil.

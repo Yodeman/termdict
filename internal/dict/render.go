@@ -4,27 +4,55 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/template"
 )
 
-// defTemplate renders an entity with tview color markup for the
-// definition box. Output format is unchanged from v0.1.0.
-const defTemplate = `
-[::b]{{.Word}}
+// RenderOptions carries the themed tview markup snippets RenderTUI
+// embeds. The dict package stays free of tview imports: callers pass
+// color tags derived from their active theme. Zero-value options
+// degrade to attribute-only markup (bold/italic), which is also what
+// the mono (NO_COLOR) theme produces.
+type RenderOptions struct {
+	HeaderTag string // bold accent for the headword line
+	AccentTag string // bold accent for sense numbers and POS badges
+	MutedTag  string // muted for the rule and alternate spellings
+	ResetTag  string // closes a themed tag ("[-:-:-]")
+}
 
-Definitions:
-{{range .WordDefinitions}}
-    [::Bi]part of speech: [::bi]{{.PartOfSpeech}}
-    [::BI]└{{.WordDefinition}}
+// DefaultRenderOptions returns attribute-only options (no color).
+func DefaultRenderOptions() RenderOptions {
+	return RenderOptions{
+		HeaderTag: "[::b]",
+		AccentTag: "[::b]",
+		MutedTag:  "[::i]",
+		ResetTag:  "[-:-:-]",
+	}
+}
 
-{{end}}
-`
+// RenderTUI writes entity to w formatted with tview color markup:
+// an accent headword header over a muted rule, then numbered senses
+// with inline part-of-speech badges, and a muted alternate-spellings
+// line when present. Definition prose itself is rendered verbatim.
+func RenderTUI(w io.Writer, entity Entity, opts RenderOptions) error {
+	var b strings.Builder
 
-var definitionTmpl = template.Must(template.New("definition").Parse(defTemplate))
+	fmt.Fprintf(&b, "%s%s%s\n", opts.HeaderTag, entity.Word, opts.ResetTag)
+	fmt.Fprintf(&b, "%s%s%s\n\n", opts.MutedTag, strings.Repeat("─", 32), opts.ResetTag)
 
-// RenderTUI writes entity to w formatted with tview color markup.
-func RenderTUI(w io.Writer, entity Entity) error {
-	return definitionTmpl.Execute(w, entity)
+	for i, def := range entity.WordDefinitions {
+		fmt.Fprintf(&b, " %s%d.%s ", opts.AccentTag, i+1, opts.ResetTag)
+		if pos := strings.TrimSpace(def.PartOfSpeech); pos != "" {
+			fmt.Fprintf(&b, "%s%s%s ", opts.AccentTag, pos, opts.ResetTag)
+		}
+		fmt.Fprintf(&b, "%s\n", strings.TrimRight(def.WordDefinition, "\n"))
+	}
+
+	if len(entity.Spellings) > 0 {
+		fmt.Fprintf(&b, "\n%salternate spellings: %s%s\n",
+			opts.MutedTag, strings.Join(entity.Spellings, ", "), opts.ResetTag)
+	}
+
+	_, err := io.WriteString(w, b.String())
+	return err
 }
 
 // NotFoundMessage returns the TUI-formatted block shown when a lookup
@@ -47,15 +75,15 @@ the complete word list (internet connection required).
 `, query, warningTag)
 }
 
+// PlainTextNotFound returns the single-line not-found notice printed to
+// stderr by the CLI (stdout stays empty so pipes stay clean).
+func PlainTextNotFound(query string) string {
+	return fmt.Sprintf("No results for %q. Run 'termdict download' to get the full dictionary.\n", query)
+}
+
 // RenderPlainText writes entity to w in the plain-text format used by
 // the CLI: definition payload only, no color markup, safe to pipe.
-//
-//	word
-//
-//	  part of speech: n.
-//	  └definition…
-//
-//	alternate spellings: x, y      (only when present)
+// Format is stable since v0.2.0 — the piping contract depends on it.
 func RenderPlainText(w io.Writer, entity Entity) error {
 	if _, err := fmt.Fprintf(w, "%s\n", entity.Word); err != nil {
 		return err
@@ -83,10 +111,4 @@ func RenderPlainText(w io.Writer, entity Entity) error {
 		return err
 	}
 	return nil
-}
-
-// PlainTextNotFound returns the single-line not-found notice printed to
-// stderr by the CLI (stdout stays empty so pipes stay clean).
-func PlainTextNotFound(query string) string {
-	return fmt.Sprintf("No results for %q. Run 'termdict download' to get the full dictionary.\n", query)
 }

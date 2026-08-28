@@ -140,6 +140,13 @@ type UI struct {
 	updateDbButton     *tview.Button
 	downloadFullButton *tview.Button
 
+	footerGrid   *tview.Grid
+	footerHints  *tview.TextView
+	footerStatus *tview.TextView
+
+	currentSuggestions []string // clean words behind the styled list items
+	buttonsHidden      bool     // button bar hidden on narrow terminals
+
 	updating     atomic.Bool
 	updateCtx    context.Context
 	cancelUpdate context.CancelFunc
@@ -173,11 +180,12 @@ func (u *UI) Run() error {
 	// root widget
 	rootGrid := tview.NewGrid().
 		SetBorders(false).
-		SetRows(-1, 1).
+		SetRows(-1, 1, 1).
 		SetColumns(searchGridWidth, -1)
 
-	// Shrink the fixed-width search column on narrow terminals so the
-	// definition pane stays readable down to ~60 columns.
+	// Responsive layout: shrink the fixed-width search column on narrow
+	// terminals, and below 70 columns hide the button bar entirely —
+	// the persistent footer carries the key hints instead.
 	u.app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
 		width, _ := screen.Size()
 		columns := searchGridWidth
@@ -188,6 +196,15 @@ func (u *UI) Run() error {
 			}
 		}
 		rootGrid.SetColumns(columns, -1)
+		narrow := width > 0 && width < 70
+		if narrow != u.buttonsHidden {
+			u.buttonsHidden = narrow
+			if narrow {
+				rootGrid.RemoveItem(u.commandsGrid)
+			} else {
+				rootGrid.AddItem(u.commandsGrid, 1, 0, 1, 2, 0, 0, false)
+			}
+		}
 		return false
 	})
 
@@ -201,8 +218,15 @@ func (u *UI) Run() error {
 	u.searchInputField.SetChangedFunc(func(text string) {
 		u.listSuggestions(text)
 	})
-	u.searchListField.SetChangedFunc(func(_ int, mainText, _ string, _ rune) {
-		u.searchWord(mainText)
+	u.searchListField.SetChangedFunc(func(idx int, mainText, secondaryText string, _ rune) {
+		// List items carry themed markup; the clean word for the lookup
+		// lives in currentSuggestions, keyed by row index. The trailing
+		// "… N more" row has no clean word and is skipped.
+		_ = mainText
+		_ = secondaryText
+		if idx < len(u.currentSuggestions) {
+			u.searchWord(u.currentSuggestions[idx])
+		}
 	})
 
 	// commands
@@ -214,6 +238,7 @@ func (u *UI) Run() error {
 
 	u.initializePopups()
 	u.initializeButtons()
+	u.initializeFooter()
 
 	u.commandsGrid.AddItem(u.helpButton, 0, 0, 1, 1, 0, 0, false)
 	u.commandsGrid.AddItem(u.aboutButton, 0, 1, 1, 1, 0, 0, false)
@@ -223,6 +248,7 @@ func (u *UI) Run() error {
 	rootGrid.AddItem(u.searchGrid, 0, 0, 1, 1, 0, 0, false)
 	rootGrid.AddItem(u.definitionBox, 0, 1, 1, 1, 0, 0, false)
 	rootGrid.AddItem(u.commandsGrid, 1, 0, 1, 2, 0, 0, false)
+	rootGrid.AddItem(u.footerGrid, 2, 0, 1, 2, 0, 0, false)
 
 	u.applyFocusAccent(u.searchInputField.Box, u.searchListField.Box, u.definitionBox.Box)
 
@@ -233,6 +259,8 @@ func (u *UI) Run() error {
 
 	u.wireWidgetNavigation()
 	u.wireGlobalKeys()
+	u.showWelcome()
+	u.setFooterReady()
 
 	if err := u.app.SetRoot(u.pages, true).SetFocus(u.searchInputField).Run(); err != nil {
 		return fmt.Errorf("running interface: %w", err)
@@ -281,6 +309,43 @@ func (u *UI) wireGlobalKeys() {
 	})
 }
 
+// initializeFooter builds the persistent status row: key hints on the
+// left, contextual state (word count / update progress) on the right.
+func (u *UI) initializeFooter() {
+	u.footerHints = tview.NewTextView().
+		SetText(" type to search · enter define · tab panes · F1 help · ctrl+u update · ctrl+q quit").
+		SetTextAlign(tview.AlignLeft)
+	u.footerStatus = tview.NewTextView().SetTextAlign(tview.AlignRight)
+	u.footerGrid = tview.NewGrid().
+		SetBorders(false).
+		SetColumns(-2, -1).
+		AddItem(u.footerHints, 0, 0, 1, 1, 0, 0, false).
+		AddItem(u.footerStatus, 0, 1, 1, 1, 0, 0, false)
+}
+
+// setFooterStatus replaces the right-hand footer text. Safe to call
+// from any goroutine when wrapped in app.QueueUpdateDraw.
+func (u *UI) setFooterStatus(text string) {
+	if u.footerStatus != nil {
+		u.footerStatus.SetText(text)
+	}
+}
+
+// setFooterReady restores the idle status line.
+func (u *UI) setFooterReady() {
+	u.setFooterStatus(fmt.Sprintf("%d words ready · theme: %s ", u.svc.Len(), u.theme.Name))
+}
+
+// renderOptions derives the themed markup snippets for dict.RenderTUI.
+func (u *UI) renderOptions() dict.RenderOptions {
+	return dict.RenderOptions{
+		HeaderTag: u.theme.TagStyle(u.theme.Header, "b"),
+		AccentTag: u.theme.TagStyle(u.theme.Accent, "b"),
+		MutedTag:  u.theme.TagStyle(u.theme.Muted, "i"),
+		ResetTag:  "[-:-:-]",
+	}
+}
+
 func (u *UI) initializeDefinitionWidget() {
 	u.definitionBox = tview.NewTextView().
 		SetScrollable(true).
@@ -309,7 +374,7 @@ func (u *UI) searchWord(word string) {
 				u.theme.Tag(u.theme.Warning), strings.Join(suggestions, ", "))
 		}
 	default:
-		if err := dict.RenderTUI(writer, entity); err != nil {
+		if err := dict.RenderTUI(writer, entity, u.renderOptions()); err != nil {
 			log.Printf("rendering definition of %q: %v", word, err)
 			writer.Reset()
 			writer.WriteString("[red::b]Something went wrong while showing this definition.[red::-]")
@@ -319,11 +384,33 @@ func (u *UI) searchWord(word string) {
 	u.definitionBox.SetText(writer.String())
 }
 
-// listSuggestions fills the suggestion list with words matching text.
+// listSuggestions fills the suggestion list with words matching text,
+// emphasizing the typed prefix in accent color and appending a muted
+// truncation hint when the cap hides further matches.
 func (u *UI) listSuggestions(text string) {
 	u.searchListField.Clear()
-	for _, suggestion := range u.svc.Suggest(text, maxMatchWords) {
-		u.searchListField.AddItem(suggestion, "", 0, nil)
+
+	suggestions := u.svc.Suggest(text, maxMatchWords)
+	u.currentSuggestions = suggestions
+
+	prefix := strings.ToLower(strings.TrimSpace(text))
+	var accentTag string
+	if prefix != "" {
+		accentTag = u.theme.TagStyle(u.theme.Accent, "")
+	}
+	for _, suggestion := range suggestions {
+		main := suggestion
+		if accentTag != "" && strings.HasPrefix(suggestion, prefix) {
+			main = accentTag + suggestion[:len(prefix)] + "[-::-]" + suggestion[len(prefix):]
+		}
+		u.searchListField.AddItem(main, "", 0, nil)
+	}
+
+	if total := u.svc.CountPrefix(text); total > len(suggestions) {
+		u.searchListField.AddItem(
+			u.theme.TagStyle(u.theme.Muted, "i")+
+				fmt.Sprintf("… %d more — keep typing", total-len(suggestions))+
+				"[-::-]", "", 0, nil)
 	}
 }
 
@@ -370,12 +457,16 @@ func (u *UI) runUpdateAction(runningText string, action func(context.Context, da
 				if u.updating.Load() {
 					u.updateWidget.SetText(
 						progressText(runningText, done, total, current))
+					u.setFooterStatus(fmt.Sprintf("%s… %d/%d ", runningText, done, total))
 				}
 			})
 		})
 
 		u.app.QueueUpdateDraw(func() {
-			defer func() { u.updating.Store(false) }()
+			defer func() {
+				u.updating.Store(false)
+				u.setFooterReady()
+			}()
 			switch {
 			case errors.Is(err, context.Canceled):
 				u.updateWidget.SetText(cancelledMsg)
