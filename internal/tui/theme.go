@@ -161,11 +161,18 @@ func (t Theme) applyStyles() {
 // Tag renders c as a bold tview markup tag. Under mono (NO_COLOR) it
 // degrades to a plain bold attribute so markup stays color-free.
 func (t Theme) Tag(c tcell.Color) string {
+	return t.TagStyle(c, "b")
+}
+
+// TagStyle renders c as a tview markup tag with the given attribute
+// flags (e.g. "b", "i", ""). Under mono (NO_COLOR) it degrades to an
+// attribute-only tag so markup stays color-free.
+func (t Theme) TagStyle(c tcell.Color, flags string) string {
 	if c == tcell.ColorDefault {
-		return "[::b]"
+		return "[::" + flags + "]"
 	}
 	r, g, b := c.RGB()
-	return fmt.Sprintf("[#%02x%02x%02x::b]", r, g, b)
+	return fmt.Sprintf("[#%02x%02x%02x::%s]", r, g, b, flags)
 }
 
 // applyRoundedBorders switches tview's box-drawing corners to the
