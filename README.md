@@ -10,7 +10,11 @@
 [![Data integrity](https://github.com/yodeman/termdict/actions/workflows/data.yml/badge.svg)](https://github.com/yodeman/termdict/actions/workflows/data.yml)
 [![Latest release](https://img.shields.io/github/v/release/yodeman/termdict?include_prereleases)](https://github.com/yodeman/termdict/releases)
 
-<img src="https://github.com/Yodeman/termdict/assets/59335237/01b8da72-58ce-48de-8dea-45cf169dee74" alt="TermDict running in a terminal: a search box with suggestions on the left and the definition of a word on the right, with Help/About/Update/Quit buttons along the bottom." width="720">
+<img src="https://github.com/Yodeman/termdict/assets/59335237/01b8da72-58ce-48de-8dea-45cf169dee74" alt="TermDict running in a terminal: a search box with suggestions on the left and the definition of a word on the right, with Help/About/Update/Quit buttons along the bottom. Current releases add a persistent footer with key hints, color themes, and numbered-sense definitions." width="720">
+
+<!-- TODO(maintainer): re-capture the screenshot on the current theme
+     (ocean) after publishing v0.2.1 — the image above predates themes,
+     the footer and the numbered-sense definitions. -->
 
 </div>
 
@@ -110,8 +114,17 @@ you go, Enter shows the definition.
 
 Mouse clicks work everywhere too.
 
-Color themes: `TERMDICT_THEME=ocean|catppuccin|paper` (default `ocean`);
-set `NO_COLOR` for a completely color-free interface.
+### Color themes
+
+| Environment | Result |
+|---|---|
+| `TERMDICT_THEME=ocean` | default — blue accents on dark (no config needed) |
+| `TERMDICT_THEME=catppuccin` | [Catppuccin Mocha](https://github.com/catppuccin/catppuccin) palette |
+| `TERMDICT_THEME=paper` | light palette for light terminal schemes |
+| `NO_COLOR` (set to anything) | completely color-free interface, per [no-color.org](https://no-color.org) |
+
+Every state is conveyed in text as well as color, and all palettes pass
+WCAG AA contrast checks automatically (enforced by the test suite).
 
 ## Using the CLI
 

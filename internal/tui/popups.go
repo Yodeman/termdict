@@ -15,7 +15,7 @@ func (u *UI) initializePopups() {
 			u.pages.HidePage("help page")
 			u.app.SetFocus(u.searchInputField)
 		}).
-		SetText(helpMessage).
+		SetText(helpMessage(u.theme)).
 		SetDynamicColors(true)
 	helpWidget.SetBorder(true)
 	helpWidget.SetTitle("[::bi]Help — [Esc[] close")

@@ -10,7 +10,9 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -39,43 +41,37 @@ type Updater interface {
 	DownloadFull(ctx context.Context, progress data.ProgressFn) (downloaded int, err error)
 }
 
-// message shown upon pressing/clicking help command
-const helpMessage = `
-                [yellow:blue:b]press escape to exit!
-[-:-:-]
-Welcome to Terminal Dictionary Help!
+// helpMessage renders the F1 pane: key table first (mirroring the
+// footer hints), then the part-of-speech legend, then data hints.
+// Short lines and plain words — the audience includes kids.
+func helpMessage(theme Theme) string {
+	header := theme.TagStyle(theme.Header, "b")
+	hint := theme.TagStyle(theme.Muted, "i")
+	reset := "[-:-:-]"
 
-Terminal Dictionary was built with [::bu:https://github.com/rivo/tview]tview[:::-]
+	return fmt.Sprintf(`
+%[1]s Help %[3]s  %[2]shint: press Esc to close%[3]s
 
-[::Ub]			General Keys
+KEYS
+  type             search as you type
+  enter            define the word
+  tab / shft+tab   move between panes
+  F1               this help
+  F2               about TermDict
+  ctrl+u           update or download the dictionary
+  ctrl+q           quit
 
-[::B]Key		            Command
------------------------------------------------
-ctrl+q			Quit the application
-ctrl+u          Update dictionary words database
-F1              This help
-F2			    Details about Terminal Dictionary
-tab | shf+tab   Move between widgets (search, suggestions, definition)
+PART-OF-SPEECH SYMBOLS
+  n.    noun                        pl.    plural
+  v.    verb                        a.     adjective
+  v. t. transitive verb             adv.   adverb
+  v. i. intransitive verb           prep.  preposition
+  pron. pronoun
 
-
-[::b]           Dictionary Symbols
-
-[::B]Symbol                 Meaning
------------------------------------------------
-n.              Noun
-v.              Verb
-v. t.           Transitive verb
-v. i.           Intransitive verb
-a.              Adjective
-adv.            Adverb
-prep.           Preposition
-pron.           Pronoun
-pl.             Plural
-
-
-
-                [yellow:blue:b]press escape to exit!
-`
+%[2]sctrl+u and "Download Full Dictionary" adds the complete word list.%[3]s
+%[2]sBuilt with tview · github.com/yodeman/termdict%[3]s
+`, header, hint, reset)
+}
 
 // message shown after a successful database update
 const updateDoneMsg = `
@@ -146,6 +142,7 @@ type UI struct {
 
 	currentSuggestions []string // clean words behind the styled list items
 	buttonsHidden      bool     // button bar hidden on narrow terminals
+	spinnerActive      atomic.Bool
 
 	updating     atomic.Bool
 	updateCtx    context.Context
@@ -426,6 +423,53 @@ func (u *UI) startDownloadFull() {
 	u.runUpdateAction("Downloading full dictionary", u.updater.DownloadFull)
 }
 
+// spinnerFrames is the braille spinner used while the update channel
+// is being checked (before per-file progress is known). Paired with
+// explanatory text at all times — color/motion never carries meaning
+// alone.
+const spinnerFrames = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+// startSpinner animates the update popup with a braille spinner until
+// stop is called (idempotent; the returned wait guarantees the last
+// tick has drained when stop returns). footerStatus mirrors the state.
+func (u *UI) startSpinner(prefix string) (stop func()) {
+	u.spinnerActive.Store(true)
+	stopCh := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		frames := []rune(spinnerFrames)
+		for i := 0; ; i++ {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				frame := frames[i%len(frames)]
+				u.app.QueueUpdateDraw(func() {
+					if !u.spinnerActive.Load() || !u.updating.Load() {
+						return
+					}
+					u.updateWidget.SetText(fmt.Sprintf(
+						"%s… %c\nChecking for updates…\n\n[dim::b]press Esc to cancel[-::-]",
+						prefix, frame))
+					u.setFooterStatus(fmt.Sprintf("%s… ", prefix))
+				})
+			}
+		}
+	}()
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			u.spinnerActive.Store(false)
+			close(stopCh)
+			<-done
+		})
+	}
+}
+
 // progressText renders the popup body during a download: title,
 // counts, a bar and the current file.
 func progressText(title string, done, total int, current string) string {
@@ -452,7 +496,10 @@ func (u *UI) runUpdateAction(runningText string, action func(context.Context, da
 	go func() {
 		defer cancel()
 
+		stopSpinner := u.startSpinner(runningText)
+		var spinnerOnce sync.Once
 		updated, err := action(ctx, func(done, total int, current string) {
+			spinnerOnce.Do(func() { u.spinnerActive.Store(false) })
 			u.app.QueueUpdateDraw(func() {
 				if u.updating.Load() {
 					u.updateWidget.SetText(
@@ -461,6 +508,7 @@ func (u *UI) runUpdateAction(runningText string, action func(context.Context, da
 				}
 			})
 		})
+		stopSpinner() // drain the goroutine before drawing the result
 
 		u.app.QueueUpdateDraw(func() {
 			defer func() {

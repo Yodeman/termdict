@@ -83,5 +83,29 @@ Seed a legacy install before first launch of the new binary:
 - [ ] Quick-edit mode does not freeze rendering while selecting text.
 - [ ] Paths with spaces in `%LOCALAPPDATA%` are handled.
 
+## 7. Theme & terminal matrix (R6)
+
+Run the automated Unix matrix first:
+
+```sh
+sh scripts/pty_matrix.sh   # 4 themes x {8-color, 256-color, truecolor}
+```
+
+Then manually on Windows (Windows Terminal **and** legacy conhost —
+color downsampling behaves differently there than in Unix emulators):
+
+- [ ] `TERMDICT_THEME=ocean` — borders, accent-on-focus, footer legible.
+- [ ] `TERMDICT_THEME=catppuccin` — same checks.
+- [ ] `TERMDICT_THEME=paper` — same checks on a light terminal scheme.
+- [ ] `NO_COLOR=1` — no color at all; bold/underline styling remains;
+      every state still readable from text alone.
+- [ ] Spinner glyphs (`⠋⠙⠹…`) render during "Checking for updates…" —
+      on conhost, confirm they are not tofu boxes (ASCII `|/-\` fallback
+      decision is documented if they fail).
+- [ ] Definition pane: numbered senses + part-of-speech badges legible
+      at 60×24 and 100×30 in both terminals.
+- [ ] Footer wrapping: hints and status stay on one row each; nothing
+      overlaps at 60 columns (button bar hidden below 70).
+
 Report failures at <https://github.com/yodeman/termdict/issues> with OS,
 terminal, terminal size, and steps to reproduce.

@@ -4,6 +4,36 @@ All notable changes to TermDict are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- One-command installation: `curl …/install.sh | sh` (Linux/macOS) and
+  `irm …/install.ps1 | iex` (Windows), with all installer options still
+  available; both scripts verified under pipe-execution by CI runtime
+  smoke tests.
+- Color themes: `TERMDICT_THEME=ocean|catppuccin|paper`, plus full
+  `NO_COLOR` support; a WCAG AA contrast suite keeps every palette
+  readable automatically.
+- Accent-on-focus borders, rounded border glyphs, and a persistent
+  footer with key hints and live status (word count, update progress).
+- A welcome screen with the offline word count and a getting-started
+  hint, replacing the blank first-run pane.
+- Numbered senses with part-of-speech badges in the definition pane
+  (replacing the `part of speech:` label tree).
+- Search suggestions emphasize the typed prefix and show `… N more`
+  when more matches exist.
+- A braille spinner with explanatory text while update checks run;
+  Esc cancels at any point (unchanged) and the popup explains that
+  partial downloads resume.
+
+### Changed
+
+- The F1 help pane is reorganized: keys first, symbols second, written
+  in plainer language.
+- The installer security note now states precisely what its SHA256
+  verification does and does not protect against.
+
 ## [v0.2.0] - 2026-08-21
 
 ### Added
