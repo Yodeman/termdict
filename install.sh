@@ -1,16 +1,8 @@
 #!/bin/sh
 # TermDict installer for Linux and macOS.
 #
-# Usage:
-#   ./install.sh                     install latest release to ~/.local/bin
-#   ./install.sh --version v0.2.0    install a specific release
-#   ./install.sh --system            install to /usr/local/bin (sudo)
-#   ./install.sh --prefix DIR        install to DIR
-#   ./install.sh --from-dir DIR      dev: install archives from a local
-#                                    directory (e.g. goreleaser dist/) instead
-#                                    of downloading
-#   ./install.sh uninstall           remove the binary from the prefix
-#
+# Designed for pipe-execution ("curl -fsSL <url> | sh [-s -- <args>]"):
+# help text is embedded (no $0 dependence) and stdin is never read.
 # The script never edits shell rc files; it prints PATH instructions.
 set -eu
 
@@ -20,7 +12,31 @@ FROM_DIR=""
 PREFIX="${PREFIX:-${HOME}/.local/bin}"
 SYSTEM=0
 
-usage() { sed -n '2,16p' "$0"; exit 0; }
+usage() {
+    cat <<'EOF'
+TermDict installer for Linux and macOS.
+
+Usage (piped, one command):
+  curl -fsSL https://raw.githubusercontent.com/yodeman/termdict/main/install.sh | sh
+
+Options:
+  --version vX.Y.Z    install a specific release (default: latest)
+  --prefix DIR        install to DIR (default: ~/.local/bin)
+  --system            install to /usr/local/bin (uses sudo when needed)
+  uninstall           remove the binary from the prefix (data is kept)
+  -h, --help          show this help
+
+Example with options:
+  curl -fsSL <url> | sh -s -- --version v0.2.1
+
+Development use (maintainers):
+  --from-dir DIR      install archives from a local directory (e.g. a
+                      goreleaser dist/) instead of downloading
+
+Data lives in your platform data directory; see 'termdict help'.
+EOF
+    exit 0
+}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -81,7 +97,9 @@ fetch() { # fetch <url> <dest>
 }
 
 if [ -n "${FROM_DIR}" ]; then
-    archive_name="termdict_v${VERSION}_${os_name}_${arch_name}.tar.gz"
+    # Accept both "v0.2.1" and "0.2.1" like the download path does.
+    case "${VERSION}" in v*) tag_version="${VERSION}" ;; *) tag_version="v${VERSION}" ;; esac
+    archive_name="termdict_${tag_version}_${os_name}_${arch_name}.tar.gz"
     [ -f "${FROM_DIR}/${archive_name}" ] || \
         archive_name="termdict_${os_name}_${arch_name}.tar.gz" # snapshot builds drop the tag
     if [ ! -f "${FROM_DIR}/${archive_name}" ]; then

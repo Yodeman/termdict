@@ -27,25 +27,60 @@
 
 ## Installation
 
-### Linux & macOS
+### Linux & macOS — one command
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/yodeman/termdict/main/install.sh
-sh install.sh                 # review the script, then run it
+curl -fsSL https://raw.githubusercontent.com/yodeman/termdict/main/install.sh | sh
 ```
 
-Options: `--version vX.Y.Z` pin a release · `--system` install to
-`/usr/local/bin` · `--prefix DIR` choose another directory ·
-`uninstall` remove it (your data is kept).
+With options (still a single invocation):
 
-### Windows (PowerShell)
+```sh
+curl -fsSL https://raw.githubusercontent.com/yodeman/termdict/main/install.sh | sh -s -- --version v0.2.1
+curl -fsSL https://raw.githubusercontent.com/yodeman/termdict/main/install.sh | sh -s -- --system   # /usr/local/bin
+curl -fsSL https://raw.githubusercontent.com/yodeman/termdict/main/install.sh | sh -s -- uninstall  # remove (data kept)
+```
+
+`--prefix DIR` chooses another directory. The script never edits your shell
+rc files — it prints a PATH hint instead.
+
+### Windows (PowerShell) — one command
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/yodeman/termdict/main/install.ps1 -OutFile install.ps1
-.\install.ps1                 # adds %LOCALAPPDATA%\Programs\termdict\bin to your user PATH
+irm https://raw.githubusercontent.com/yodeman/termdict/main/install.ps1 | iex
 ```
 
-Remove again any time with `.\install.ps1 -Uninstall`.
+With options:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/yodeman/termdict/main/install.ps1))) -Version v0.2.1
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/yodeman/termdict/main/install.ps1))) -Uninstall
+```
+
+Installs to `%LOCALAPPDATA%\Programs\termdict\bin` and adds it to your user
+PATH (restart the terminal afterwards).
+
+> **About the one-liners & security.** The installer verifies the downloaded
+> archive against the SHA256 checksum published **alongside it in the same
+> release**. That protects you from corrupted or truncated downloads — it
+> does **not** protect against a compromised release (whoever can replace
+> the archive can replace the checksum beside it). If you'd rather review
+> before running, download the script and the archive from the
+> [releases page](https://github.com/yodeman/termdict/releases) manually —
+> the scripts work the same way from a local file.
+
+### Via Go
+
+```sh
+go install github.com/yodeman/termdict@latest
+```
+
+Two caveats: `--version` will report `dev` (version metadata is injected at
+release builds only), and database updates will follow the development data
+channel (tracking `main`) instead of the data pinned to a release. Updates
+themselves work normally — `termdict update` only refreshes database files,
+never the binary. Prefer the one-liners above if you want release-pinned
+data.
 
 ### From source
 

@@ -10,6 +10,11 @@ TUI behaves. Minimum viable terminal: **60×24**; comfortable: 100×30.
 go test ./... -race && go build -o bin/termdict .
 ```
 
+> Installer coverage note: the install one-liners (`install.sh` piped mode,
+> `install.ps1` runtime under `iex`-equivalent invocation) are exercised
+> automatically by CI (`sh-install-smoke` / `windows-install-smoke` jobs) —
+> you only need to re-test them here after changing the scripts themselves.
+
 Use an isolated HOME so real data is never touched:
 
 | OS | Isolated data dir |

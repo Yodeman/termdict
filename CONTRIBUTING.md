@@ -55,6 +55,23 @@ currently supported Go releases.
 | `cmd/dbasecheck` | validates database invariants (run in CI) |
 | `cmd/getwords`, `cmd/htmltojson` | OPTED scrape/converter dev tools |
 
+### Testing the installers locally (maintainers)
+
+Both installers accept a `--from-dir` / `-FromDir` flag that installs from a
+local directory instead of downloading — this flag is deliberately **not**
+part of the public README instructions:
+
+```sh
+goreleaser release --snapshot --clean     # produces dist/ archives
+cat install.sh | sh -s -- --from-dir dist --version <ver> --prefix /tmp/prefix
+```
+
+```powershell
+goreleaser release --snapshot --clean
+.\install.ps1 -FromDir .\dist -Version <ver>
+.\install.ps1 -Uninstall                  # clean up
+```
+
 ## More on contributing to dictionary words database
 
 Each file in the [words database](https://github.com/Yodeman/termdict/tree/main/word_dbase/json)

@@ -61,3 +61,45 @@ jobs:
           go-version: "1.26.x"
       - name: CLI end-to-end checks
         run: sh scripts/cli_e2e.sh
+
+  sh-install-smoke:
+    # Proves the documented piped one-liner grammar end-to-end:
+    # "cat install.sh | sh -s -- --from-dir dist --version <ver>" against a
+    # goreleaser snapshot (no network downloads).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Build snapshot archives
+        run: |
+          go install github.com/goreleaser/goreleaser/v2@latest 2>&1 | tail -1
+          ~/go/bin/goreleaser release --snapshot --clean --timeout 10m
+      - name: Piped install → verify → uninstall
+        run: |
+          set -eu
+          name=$(basename "$(ls dist/termdict_v*_linux_amd64.tar.gz | head -1)" .tar.gz)
+          ver=${name#termdict_}; ver=${ver%_linux_amd64}
+          cat install.sh | sh -s -- --from-dir dist --version "$ver" --prefix /tmp/td-prefix
+          /tmp/td-prefix/termdict --version
+          sh install.sh --prefix /tmp/td-prefix uninstall
+          [ ! -f /tmp/td-prefix/termdict ]
+
+  windows-install-smoke:
+    # Runtime smoke for install.ps1 invoked exactly like the documented
+    # one-liner (requirement R3): real code paths, session survival, no
+    # scope pollution — not just a syntax parse.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Build binary
+        run: go build -o termdict.exe .
+      - name: Runtime smoke (install → verify → uninstall)
+        shell: pwsh
+        run: ./scripts/smoke_install.ps1 -InstallScript install.ps1 -ExeSource termdict.exe
