@@ -110,6 +110,9 @@ you go, Enter shows the definition.
 
 Mouse clicks work everywhere too.
 
+Color themes: `TERMDICT_THEME=ocean|catppuccin|paper` (default `ocean`);
+set `NO_COLOR` for a completely color-free interface.
+
 ## Using the CLI
 
 ```console

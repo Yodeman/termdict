@@ -8,22 +8,22 @@ import (
 func (u *UI) initializeButtons() {
 	u.helpButton = tview.NewButton("").
 		SetLabel("Help [::b][F1[]").
-		SetBackgroundColorActivated(buttonFocusColor).
+		SetBackgroundColorActivated(u.theme.Accent).
 		SetSelectedFunc(func() { u.pages.ShowPage("help page") })
 
 	u.aboutButton = tview.NewButton("").
 		SetLabel("About [::b][F2[]").
-		SetBackgroundColorActivated(buttonFocusColor).
+		SetBackgroundColorActivated(u.theme.Accent).
 		SetSelectedFunc(func() { u.pages.ShowPage("about page") })
 
 	u.quitButton = tview.NewButton("").
 		SetLabel("Quit [::b][CTRL+Q[]").
-		SetBackgroundColorActivated(buttonFocusColor).
+		SetBackgroundColorActivated(u.theme.Accent).
 		SetSelectedFunc(func() { u.app.Stop() })
 
 	u.updateButton = tview.NewButton("").
 		SetLabel("Update Dbase [::b][CTRL+U[]").
-		SetBackgroundColorActivated(buttonFocusColor).
+		SetBackgroundColorActivated(u.theme.Accent).
 		SetSelectedFunc(func() {
 			u.startUpdate()
 		})

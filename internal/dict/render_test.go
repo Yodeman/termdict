@@ -44,11 +44,18 @@ func TestRenderTUIEmptyEntity(t *testing.T) {
 }
 
 func TestNotFoundMessage(t *testing.T) {
-	msg := NotFoundMessage("zzz")
+	msg := NotFoundMessage("zzz", "")
 	for _, want := range []string{"zzz", "No results found", "ctrl+u"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("NotFoundMessage missing %q; got:\n%s", want, msg)
 		}
+	}
+	if !strings.Contains(msg, "[::b]No results found") {
+		t.Errorf("empty tag should degrade to plain bold; got:\n%s", msg)
+	}
+	themed := NotFoundMessage("zzz", "[#f5dfa9::b]")
+	if !strings.Contains(themed, "[#f5dfa9::b]No results found") {
+		t.Errorf("themed tag not applied; got:\n%s", themed)
 	}
 }
 

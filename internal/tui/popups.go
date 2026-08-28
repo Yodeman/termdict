@@ -19,7 +19,7 @@ func (u *UI) initializePopups() {
 		SetDynamicColors(true)
 	helpWidget.SetBorder(true)
 	helpWidget.SetTitle("[::bi]Help — [Esc[] close")
-	helpWidget.SetBackgroundColor(borderColor)
+	helpWidget.SetBackgroundColor(u.theme.Background)
 
 	u.helpPopup = tview.NewGrid().
 		SetBorders(false).
@@ -45,16 +45,16 @@ func (u *UI) initializePopups() {
 		SetDynamicColors(true)
 	u.updateWidget.SetBorder(true)
 	u.updateWidget.SetTitle("[::bi]Database — [Esc[] close / cancel")
-	u.updateWidget.SetBackgroundColor(borderColor)
+	u.updateWidget.SetBackgroundColor(u.theme.Background)
 
 	// Action row shown under the update log: incremental update and
 	// full-dictionary download (the embedded core covers only the most
 	// frequent headwords).
 	u.updateDbButton = tview.NewButton("Update Dbase").
-		SetBackgroundColorActivated(buttonFocusColor).
+		SetBackgroundColorActivated(u.theme.Accent).
 		SetSelectedFunc(func() { u.startUpdate() })
 	u.downloadFullButton = tview.NewButton("Download Full Dictionary").
-		SetBackgroundColorActivated(buttonFocusColor).
+		SetBackgroundColorActivated(u.theme.Accent).
 		SetSelectedFunc(func() { u.startDownloadFull() })
 
 	buttonsGrid := tview.NewGrid().

@@ -28,19 +28,23 @@ func RenderTUI(w io.Writer, entity Entity) error {
 }
 
 // NotFoundMessage returns the TUI-formatted block shown when a lookup
-// misses the loaded dictionary. With the embedded core installed, a
-// miss usually means a rare word that the full (downloadable) database
-// still contains.
-func NotFoundMessage(query string) string {
+// misses the loaded dictionary. warningTag is the caller's themed bold
+// markup tag (an empty tag degrades to plain bold). With the embedded
+// core installed, a miss usually means a rare word that the full
+// (downloadable) database still contains.
+func NotFoundMessage(query, warningTag string) string {
+	if warningTag == "" {
+		warningTag = "[::b]"
+	}
 	return fmt.Sprintf(`
 [::b]%s
 
-[yellow::b]No results found.[-:-:-]
+%[2]sNo results found.[-:-:-]
 
 This word isn't in the offline library.
 Press ctrl+u and choose "Download Full Dictionary" to get
 the complete word list (internet connection required).
-`, query)
+`, query, warningTag)
 }
 
 // RenderPlainText writes entity to w in the plain-text format used by

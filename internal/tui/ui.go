@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync/atomic"
 
@@ -21,14 +22,11 @@ import (
 
 // Configurations.
 const (
-	maxMatchWords    = 50 // maximum numbers of search suggestions
-	searchGridWidth  = 60 // search and suggestions widget width
-	commandsWidth    = 13 // width for each command options
-	popupWidth       = 80 // message box width
-	popupHeight      = 25 // message box height
-	borderColor      = tcell.ColorBlue
-	inputFieldColor  = tcell.ColorWhite
-	buttonFocusColor = tcell.ColorYellow
+	maxMatchWords   = 50 // maximum numbers of search suggestions
+	searchGridWidth = 60 // search and suggestions widget width
+	commandsWidth   = 13 // width for each command options
+	popupWidth      = 80 // message box width
+	popupHeight     = 25 // message box height
 )
 
 // Updater supplies database update operations to the UI. Implemented by
@@ -120,6 +118,7 @@ type UI struct {
 	cfg     config.Paths
 	svc     *dict.Service
 	updater Updater
+	theme   Theme
 
 	app              *tview.Application
 	pages            *tview.Pages
@@ -148,15 +147,25 @@ type UI struct {
 }
 
 // New creates a UI for cfg using svc for lookups and updater for
-// database updates.
+// database updates. The color theme is resolved from the environment
+// (TERMDICT_THEME; NO_COLOR forces a color-free palette).
 func New(cfg config.Paths, svc *dict.Service, updater Updater) *UI {
-	return &UI{cfg: cfg, svc: svc, updater: updater}
+	theme, themeErr := Select(os.Getenv)
+	if themeErr != nil {
+		log.Printf("Warning: %v.", themeErr)
+	}
+	return &UI{cfg: cfg, svc: svc, updater: updater, theme: theme}
 }
 
 // Run builds the layout and blocks until the user quits.
 func (u *UI) Run() error {
 	u.updateCtx, u.cancelUpdate = context.WithCancel(context.Background())
 	defer u.cancelUpdate()
+
+	// tview primitives capture border/title colors from tview.Styles at
+	// construction time, so the theme must be applied first.
+	u.theme.applyStyles()
+	applyRoundedBorders()
 
 	u.app = tview.NewApplication().EnableMouse(true)
 	u.pages = tview.NewPages()
@@ -201,7 +210,7 @@ func (u *UI) Run() error {
 		SetBorders(false).
 		SetColumns(
 			commandsWidth, commandsWidth, commandsWidth+10, commandsWidth, -1)
-	u.commandsGrid.SetBackgroundColor(borderColor)
+	u.commandsGrid.SetBackgroundColor(u.theme.Border)
 
 	u.initializePopups()
 	u.initializeButtons()
@@ -214,6 +223,8 @@ func (u *UI) Run() error {
 	rootGrid.AddItem(u.searchGrid, 0, 0, 1, 1, 0, 0, false)
 	rootGrid.AddItem(u.definitionBox, 0, 1, 1, 1, 0, 0, false)
 	rootGrid.AddItem(u.commandsGrid, 1, 0, 1, 2, 0, 0, false)
+
+	u.applyFocusAccent(u.searchInputField.Box, u.searchListField.Box, u.definitionBox.Box)
 
 	u.pages.AddPage("root widget", rootGrid, true, true)
 	u.pages.AddPage("help page", u.helpPopup, true, false)
@@ -276,7 +287,7 @@ func (u *UI) initializeDefinitionWidget() {
 		SetDynamicColors(true)
 	u.definitionBox.SetBorder(true)
 	u.definitionBox.SetTitle("[::bi]Definition")
-	u.definitionBox.SetBorderColor(borderColor)
+	u.definitionBox.SetBorderColor(u.theme.Border)
 	u.definitionBox.SetChangedFunc(func() {
 		u.app.Draw()
 	})
@@ -291,10 +302,11 @@ func (u *UI) searchWord(word string) {
 	entity, found := u.svc.Lookup(word)
 	switch {
 	case !found:
-		fmt.Fprintf(writer, "%s", dict.NotFoundMessage(strings.TrimSpace(word)))
+		fmt.Fprintf(writer, "%s",
+			dict.NotFoundMessage(strings.TrimSpace(word), u.theme.Tag(u.theme.Warning)))
 		if suggestions := u.svc.Fuzzy(word, dict.MaxFuzzySuggestions); len(suggestions) > 0 {
-			fmt.Fprintf(writer, "\n[yellow::b]Did you mean:[yellow::-] %s\n",
-				strings.Join(suggestions, ", "))
+			fmt.Fprintf(writer, "\n%sDid you mean:[::-] %s\n",
+				u.theme.Tag(u.theme.Warning), strings.Join(suggestions, ", "))
 		}
 	default:
 		if err := dict.RenderTUI(writer, entity); err != nil {
