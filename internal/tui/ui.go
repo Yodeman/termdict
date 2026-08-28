@@ -61,12 +61,9 @@ KEYS
   ctrl+u           update or download the dictionary
   ctrl+q           quit
 
-PART-OF-SPEECH SYMBOLS
-  n.    noun                        pl.    plural
-  v.    verb                        a.     adjective
-  v. t. transitive verb             adv.   adverb
-  v. i. intransitive verb           prep.  preposition
-  pron. pronoun
+PARTS OF SPEECH
+  Definitions are grouped under full labels
+  (Noun, Adjective, Verb (transitive), ...).
 
 %[2]sctrl+u and "Download Full Dictionary" adds the complete word list.%[3]s
 %[2]sBuilt with tview · github.com/yodeman/termdict%[3]s
@@ -144,6 +141,8 @@ type UI struct {
 	buttonsHidden      bool     // button bar hidden on narrow terminals
 	spinnerActive      atomic.Bool
 	pageReturnFocus    tview.Primitive // focus to restore when a popup closes
+	lastWord           string          // word currently shown in the definition pane
+	lastRenderWidth    int             // terminal width of the last definition render
 
 	updating     atomic.Bool
 	updateCtx    context.Context
@@ -201,6 +200,16 @@ func (u *UI) Run() error {
 				rootGrid.RemoveItem(u.commandsGrid)
 			} else {
 				rootGrid.AddItem(u.commandsGrid, 1, 0, 1, 2, 0, 0, false)
+			}
+		}
+		// The definition renderer wraps to the pane width, so a width
+		// change must re-render the current content. The re-render is
+		// queued (SetText from inside a draw would re-enter app.Draw).
+		if width > 0 && width != u.lastRenderWidth {
+			widthChanged := u.lastRenderWidth != 0
+			u.lastRenderWidth = width
+			if widthChanged {
+				u.app.QueueUpdateDraw(func() { u.rerenderDefinition() })
 			}
 		}
 		return false
@@ -377,24 +386,30 @@ func (u *UI) setFooterReady() {
 // text on an accent chip) so the badge reads as a distinct element, not
 // as body text.
 func (u *UI) renderOptions() dict.RenderOptions {
-	badge := "[::b]"
-	if u.theme.Accent != tcell.ColorDefault {
-		fr, fg, fb := u.theme.Background.RGB()
-		br, bg, bb := u.theme.Accent.RGB()
-		badge = fmt.Sprintf("[#%02x%02x%02x:#%02x%02x%02x:b]", fr, fg, fb, br, bg, bb)
+	defWidth := 0
+	if u.lastRenderWidth > 0 {
+		searchCol := searchGridWidth
+		if u.lastRenderWidth < searchGridWidth+24 {
+			searchCol = u.lastRenderWidth * 3 / 5
+		}
+		defWidth = u.lastRenderWidth - searchCol - 2 // pane borders
 	}
+
 	return dict.RenderOptions{
-		HeaderTag: u.theme.TagStyle(u.theme.Header, "b"),
-		AccentTag: u.theme.TagStyle(u.theme.Accent, "b"),
-		BadgeTag:  badge,
-		MutedTag:  u.theme.TagStyle(u.theme.Muted, "i"),
-		ResetTag:  "[-:-:-]",
+		HeaderTag:      u.theme.TagStyle(u.theme.Header, "b"),
+		AccentTag:      u.theme.TagStyle(u.theme.Accent, "b"),
+		MutedTag:       u.theme.TagStyle(u.theme.Muted, ""),
+		MutedItalicTag: u.theme.TagStyle(u.theme.Muted, "i"),
+		ResetTag:       "[-:-:-]",
+		Boxed:          !u.buttonsHidden && defWidth >= 24,
+		Width:          defWidth,
 	}
 }
 
 func (u *UI) initializeDefinitionWidget() {
 	u.definitionBox = tview.NewTextView().
 		SetScrollable(true).
+		SetWrap(false). // the renderer wraps to the pane width itself
 		SetDynamicColors(true)
 	u.definitionBox.SetBorder(true)
 	u.definitionBox.SetTitle("[::bi]Definition")
@@ -408,20 +423,32 @@ func (u *UI) initializeDefinitionWidget() {
 // result in the definition box. Lookup misses and render errors are
 // surfaced in the box instead of terminating the program.
 func (u *UI) searchWord(word string) {
+	u.lastWord = strings.TrimSpace(word)
+	u.rerenderDefinition()
+}
+
+// rerenderDefinition redraws the definition pane for the current word
+// at the current terminal width (used on first lookup and on resize).
+func (u *UI) rerenderDefinition() {
 	writer := new(strings.Builder)
 
-	entity, found := u.svc.Lookup(word)
+	if u.lastWord == "" {
+		u.showWelcome()
+		return
+	}
+
+	entity, found := u.svc.Lookup(u.lastWord)
 	switch {
 	case !found:
 		fmt.Fprintf(writer, "%s",
-			dict.NotFoundMessage(strings.TrimSpace(word), u.theme.Tag(u.theme.Warning)))
-		if suggestions := u.svc.Fuzzy(word, dict.MaxFuzzySuggestions); len(suggestions) > 0 {
+			dict.NotFoundMessage(u.lastWord, u.theme.Tag(u.theme.Warning)))
+		if suggestions := u.svc.Fuzzy(u.lastWord, dict.MaxFuzzySuggestions); len(suggestions) > 0 {
 			fmt.Fprintf(writer, "\n%sDid you mean:[::-] %s\n",
 				u.theme.Tag(u.theme.Warning), strings.Join(suggestions, ", "))
 		}
 	default:
 		if err := dict.RenderTUI(writer, entity, u.renderOptions()); err != nil {
-			log.Printf("rendering definition of %q: %v", word, err)
+			log.Printf("rendering definition of %q: %v", u.lastWord, err)
 			writer.Reset()
 			writer.WriteString("[red::b]Something went wrong while showing this definition.[red::-]")
 		}

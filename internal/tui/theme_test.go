@@ -135,16 +135,18 @@ func TestThemeTag(t *testing.T) {
 
 // The contrast suite above validates the tokens; this validates that
 // the definition renderer actually APPLIES them (QA v2 issue 1,
-// action 3): themed options must embed four distinct tags in the
-// output — header, badge chip, accent numbers and muted rule.
+// action 3): themed options must embed the header, accent and muted
+// tags in the output, and box headers must use the spelled-out label.
 func TestRenderOptionsAppliedToOutput(t *testing.T) {
 	ocean, _ := Select(func(string) string { return "" })
 	ro := dict.RenderOptions{
-		HeaderTag: ocean.TagStyle(ocean.Header, "b"),
-		AccentTag: ocean.TagStyle(ocean.Accent, "b"),
-		BadgeTag:  "[#1e1e2e:#74b3ff:b]",
-		MutedTag:  ocean.TagStyle(ocean.Muted, "i"),
-		ResetTag:  "[-:-:-]",
+		HeaderTag:      ocean.TagStyle(ocean.Header, "b"),
+		AccentTag:      ocean.TagStyle(ocean.Accent, "b"),
+		MutedTag:       ocean.TagStyle(ocean.Muted, ""),
+		MutedItalicTag: ocean.TagStyle(ocean.Muted, "i"),
+		ResetTag:       "[-:-:-]",
+		Boxed:          true,
+		Width:          80,
 	}
 	if ro.HeaderTag == ro.AccentTag {
 		t.Fatal("header and accent tags must differ for a visible hierarchy")
@@ -163,7 +165,6 @@ func TestRenderOptionsAppliedToOutput(t *testing.T) {
 
 	for name, tag := range map[string]string{
 		"header": ro.HeaderTag,
-		"badge":  ro.BadgeTag,
 		"accent": ro.AccentTag,
 		"muted":  ro.MutedTag,
 	} {
@@ -171,9 +172,10 @@ func TestRenderOptionsAppliedToOutput(t *testing.T) {
 			t.Errorf("rendered output never applies the %s tag (%q);\ngot:\n%s", name, tag, out)
 		}
 	}
-	// The badge chip must carry a background color (the reversed-color
-	// treatment that makes it read as a badge, not body text).
-	if !strings.Contains(out, "] n. [") {
-		t.Errorf("badge chip structure missing:\n%s", out)
+	if !strings.Contains(out, "Noun") {
+		t.Errorf("box header should use the spelled-out label:\n%s", out)
+	}
+	if strings.Contains(out, "n.") {
+		t.Errorf("abbreviation leaked into the rendered header:\n%s", out)
 	}
 }

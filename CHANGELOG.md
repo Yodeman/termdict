@@ -19,8 +19,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
   footer with key hints and live status (word count, update progress).
 - A welcome screen with the offline word count and a getting-started
   hint, replacing the blank first-run pane.
-- Numbered senses with part-of-speech badges in the definition pane
-  (replacing the `part of speech:` label tree).
+- Definitions grouped by part of speech into boxed sections with
+  full spelled-out labels (Noun, Adjective, Verb (transitive), ...)
+  instead of abbreviation tags; sense numbers restart per group and
+  thin rules separate senses. Text wraps to a ~96-column measure on
+  wide terminals; below 70 columns the boxes collapse to plain rules.
 - Search suggestions emphasize the typed prefix and show `… N more`
   when more matches exist.
 - A braille spinner with explanatory text while update checks run;
